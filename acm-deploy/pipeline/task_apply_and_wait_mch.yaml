@@ -1,0 +1,47 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: apply-and-wait-for-mch
+spec:
+  params:
+  - name: namespace
+    default: open-cluster-management
+    description: The namespace to deploy ACM into
+    type: string
+  # - name: imagePullSecret
+  #   default: multiclusterhub-operator-pull-secret
+  #   description: The image pull secret used to deploy the catalogsources in 'openshift-marketplace' namespace
+  #   type: string
+  steps:
+  - args:
+    - |-
+      #!/bin/bash
+      set -e
+
+      _LOGIN_CMD=$(cat login.sh)
+      eval "$_LOGIN_CMD"
+
+      oc apply -f samples/acm-deploy/resources/acm_mch.yaml -n $(inputs.params.namespace)
+      # oc patch mch multiclusterhub -n $(inputs.params.namespace) --type=json -p '[{"op": "replace", "path": "/spec/imagePullSecret", "value": $(inputs.params.imagePullSecret)}]'
+
+      _ATTEMPTS=0
+      until oc get mch multiclusterhub -n $(inputs.params.namespace) -o jsonpath={'.status.phase'} | grep "Running";
+      do 
+          echo "Waiting for MCH to enter a running state..."
+          _ATTEMPTS=$((_ATTEMPTS + 1))
+          sleep 15;
+          if [[ $_ATTEMPTS == 30 ]]; then
+              echo "Failed to install the MCH in allotted time"
+              exit 1
+          fi
+      done
+
+    command:
+    - /bin/bash
+    - -c
+    image: quay.io/zkayyali812/ocm-utils:latest
+    name: apply
+    resources: {}
+    workingDir: /workspace/source
+  workspaces:
+  - name: source

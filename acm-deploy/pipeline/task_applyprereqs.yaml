@@ -1,0 +1,99 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: apply-acm-prereqs
+spec:
+  params:
+  - name: logincmd
+    default: ""
+    description: The command to login to the claimed cluster
+    type: string
+  - name: namespace
+    default: open-cluster-management
+    description: The namespace to deploy ACM into
+    type: string
+  # - name: imagePullSecretName
+  #   default: "The name of the image pull secret used to deploy the catalogsources. Copied from clusterPoolNamespace"
+  #   description: The namespace to deploy ACM into
+  #   type: string
+  # - name: imagePullSecret
+  #   default: ""
+  #   description: The image pull secret used to deploy the catalogsources. Copied from clusterPoolNamespace
+  #   type: string
+  # - name: snapshotTag
+  #   default: ""
+  #   description: The SNAPSHOT Tag used to deploy the catalogsources
+  #   type: string
+  steps:
+  - args:
+    - |-
+      #!/bin/bash
+      set -e
+
+      # echo $(inputs.params.snapshotTag)
+
+      _LOGIN_CMD=$(cat login.sh)
+      eval "$_LOGIN_CMD"
+
+      echo "Creating Namespace..."
+      oc create namespace $(inputs.params.namespace) --dry-run=client -o yaml | oc apply -f -
+      
+
+      ## UNCOMMENT TO SUPPORT PRIVATE CATALOGSOURCES...
+      # echo "Creating ImagePullSecret..."
+      # _TEMPLATE="apiVersion: v1
+      # data:
+      #   .dockerconfigjson: $(inputs.params.imagePullSecret)
+      # kind: Secret
+      # metadata:
+      #   name: $(inputs.params.imagePullSecretName)
+      # type: kubernetes.io/dockerconfigjson"
+      # echo "$_TEMPLATE" | oc apply -n $(inputs.params.namespace) -f  -
+      # echo "$_TEMPLATE" | oc apply -n openshift-marketplace -f -
+
+      # echo "Creating CatalogSource..."
+
+      # _TEMPLATE="apiVersion: operators.coreos.com/v1alpha1
+      # kind: CatalogSource
+      # metadata:
+      #   name: acm-custom-registry
+      #   namespace: openshift-marketplace
+      # spec:
+      #   displayName: Advanced Cluster Management
+      #   image: quay.io/stolostron/acm-custom-registry:$(inputs.params.snapshotTag)
+      #   publisher: Red Hat
+      #   secrets:
+      #   - $(inputs.params.imagePullSecretName)
+      #   sourceType: grpc
+      #   updateStrategy:
+      #     registryPoll:
+      #       interval: 10m"
+      # echo "$_TEMPLATE" | oc apply -f -
+
+      # _TEMPLATE="apiVersion: operators.coreos.com/v1alpha1
+      # kind: CatalogSource
+      # metadata:
+      #   name: multiclusterengine-catalog
+      #   namespace: openshift-marketplace
+      # spec:
+      #   displayName: MultiCluster Engine
+      #   image: quay.io/stolostron/cmb-custom-registry:$(inputs.params.snapshotTag)
+      #   publisher: Red Hat
+      #   sourceType: grpc
+      #   updateStrategy:
+      #     registryPoll:
+      #       interval: 10m"
+      # echo "$_TEMPLATE" | oc apply -f -
+
+      # echo "Sleeping for 1 minute..."
+      # sleep 60
+
+    command:
+    - /bin/bash
+    - -c
+    image: quay.io/zkayyali812/ocm-utils:latest
+    name: apply
+    resources: {}
+    workingDir: /workspace/source
+  workspaces:
+  - name: source

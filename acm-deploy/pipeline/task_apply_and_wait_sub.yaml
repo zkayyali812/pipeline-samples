@@ -1,0 +1,69 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: apply-and-wait-for-subscription
+spec:
+  params:
+  - name: namespace
+    default: open-cluster-management
+    description: The namespace to deploy ACM into
+    type: string
+  steps:
+  - args:
+    - |-
+      #!/bin/bash
+      set -e
+
+      _LOGIN_CMD=$(cat login.sh)
+      eval "$_LOGIN_CMD"
+
+      existingCSV=$(oc get sub acm-operator-subscription -n $(inputs.params.namespace) -o yaml | yq eval '.status.currentCSV' -)
+      if [[ "$existingCSV" != "" ]]; then
+          echo "Existing ACM install exists"
+          echo $existingCSV
+          oc delete csv $existingCSV -n $(inputs.params.namespace)
+          oc delete sub -n $(inputs.params.namespace) acm-operator-subscription
+      else
+          echo "Existing ACM install does not exist"
+      fi
+
+      oc apply -f samples/acm-deploy/resources/acm_operatorgroup.yaml -n $(inputs.params.namespace)
+      oc patch og default -n $(inputs.params.namespace) --type=merge -p '{ "spec":  { "targetNamespaces" : ["$(inputs.params.namespace)"]}}'
+
+      oc apply -f samples/acm-deploy/resources/acm_subscription.yaml -n $(inputs.params.namespace)
+
+      _ATTEMPTS=0
+      until oc get sub acm-operator-subscription -n $(inputs.params.namespace) -o jsonpath='{.status.currentCSV}' | grep -q "advanced";
+      do 
+          echo "Waiting for CSV..."
+          _ATTEMPTS=$((_ATTEMPTS + 1))
+          sleep 5;
+          if [[ $_ATTEMPTS == 5 ]]; then
+              echo "Failed to find the CSV in allotted time"
+              exit 1
+          fi
+      done
+
+      _CURRENT_CSV=$(oc get sub acm-operator-subscription -n $(inputs.params.namespace) -o jsonpath='{.status.currentCSV}')
+
+      _ATTEMPTS=0
+      until oc get csv ${_CURRENT_CSV} -n $(inputs.params.namespace) -ojsonpath='{.status.phase}' | grep "Succeeded";
+      do 
+          echo "Waiting for CSV to installation to complete..."
+          _ATTEMPTS=$((_ATTEMPTS + 1))
+          sleep 15;
+          if [[ $_ATTEMPTS == 10 ]]; then
+              echo "The CSV failed to install in the allotted time"
+              exit 1
+          fi
+      done
+
+    command:
+    - /bin/bash
+    - -c
+    image: quay.io/zkayyali812/ocm-utils:latest
+    name: apply
+    resources: {}
+    workingDir: /workspace/source
+  workspaces:
+  - name: source

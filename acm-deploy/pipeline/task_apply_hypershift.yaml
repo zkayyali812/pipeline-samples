@@ -1,0 +1,51 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: apply-hypershift
+spec:
+  params:
+  - name: namespace
+    default: open-cluster-management
+    description: The namespace to deploy ACM into
+    type: string
+  - name: S3BucketName
+    default: "s3-bucket-name"
+    description: The name of the S3 Bucket used for HyperShift
+    type: string
+  - name: region
+    default: us-east-1
+    description: The AWS region used
+    type: string
+  steps:
+  - args:
+    - |-
+      #!/bin/bash
+      set -e
+
+      _LOGIN_CMD=$(cat login.sh)
+      eval "$_LOGIN_CMD"
+
+      mkdir -p ${HOME}/.kube
+      mv kubeconfig.yaml ${HOME}/.kube/config
+      export KUBECONFIG=${HOME}/.kube/config
+
+      cd hypershift/
+      make build
+
+      _BUCKET_NAME=$(inputs.params.S3BucketName)
+      _REGION=$(inputs.params.region)
+      _AWS_CREDS="../awsCredentials.txt"
+
+      ./bin/hypershift install \
+      --oidc-storage-provider-s3-bucket-name $_BUCKET_NAME \
+      --oidc-storage-provider-s3-credentials $_AWS_CREDS \
+      --oidc-storage-provider-s3-region $_REGION
+    command:
+    - /bin/bash
+    - -c
+    image: quay.io/zkayyali812/ocm-utils:latest
+    name: apply
+    resources: {}
+    workingDir: /workspace/source
+  workspaces:
+  - name: source
