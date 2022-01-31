@@ -24,6 +24,10 @@ spec:
     default: "8h"
     description: The length of the lifetime of the clusterclaim
     type: string
+  - name: imagePullSecret
+    default: "multiclusterhub-operator-pull-secret"
+    description: The imagePullSecret used to pull the ACM images. Must exist in clusterPoolNamespace
+    type: string
   results:
   - name: username
     description: Username for the claimed cluster.
@@ -31,6 +35,8 @@ spec:
     description: Password for the claimed cluster.  
   - name: api
     description: API URL of the claimed cluster.
+  - name: imagePullSecret
+    description: The imagePullSecret on the hub cluster.
   steps:
   - args:
     - |-
@@ -59,12 +65,17 @@ spec:
       _USERNAME=$(oc get secret ${CD_INFO} -n ${NAMESPACE} -o jsonpath='{.data.username}' | base64 -d )
       _PASSWORD=$(oc get secret ${CD_INFO} -n ${NAMESPACE} -o jsonpath='{.data.password}' | base64 -d  )
       _API_URL=$(oc get cd ${NAMESPACE} -n ${NAMESPACE} -o jsonpath='{.status.apiURL}' )
+      
       oc get secret $(inputs.params.awsCredsSecret) -n $(inputs.params.clusterPoolNamespace) -o yaml | yq eval '.data' - > awsCredentials.txt
       oc get secret -n ${NAMESPACE} ${KUBECONFIG_SECRET} -o yaml | yq eval '.data.kubeconfig' - | base64 -d > kubeconfig.yaml
       
+      
+      _IMAGE_PULL_SECRET=$(oc get secret -n $(inputs.params.clusterPoolNamespace) $(inputs.params.imagePullSecret) -o yaml | yq eval '.data.".dockerconfigjson"' -)
+
       echo "$_USERNAME" | tr -d '\n' > $(results.username.path)
       echo "$_PASSWORD" | tr -d '\n' > $(results.password.path)
       echo "$_API_URL" | tr -d '\n' > $(results.api.path)
+      echo "$_IMAGE_PULL_SECRET" | tr -d '\n' > $(results.imagePullSecret.path)
     command:
     - /bin/bash
     - -c

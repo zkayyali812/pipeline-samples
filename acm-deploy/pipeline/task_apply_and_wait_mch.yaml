@@ -8,10 +8,10 @@ spec:
     default: open-cluster-management
     description: The namespace to deploy ACM into
     type: string
-  # - name: imagePullSecret
-  #   default: multiclusterhub-operator-pull-secret
-  #   description: The image pull secret used to deploy the catalogsources in 'openshift-marketplace' namespace
-  #   type: string
+  - name: imagePullSecret
+    default: multiclusterhub-operator-pull-secret
+    description: The image pull secret used to deploy the catalogsources in 'openshift-marketplace' namespace
+    type: string
   steps:
   - args:
     - |-
@@ -22,7 +22,7 @@ spec:
       eval "$_LOGIN_CMD"
 
       oc apply -f samples/acm-deploy/resources/acm_mch.yaml -n $(inputs.params.namespace)
-      # oc patch mch multiclusterhub -n $(inputs.params.namespace) --type=json -p '[{"op": "replace", "path": "/spec/imagePullSecret", "value": $(inputs.params.imagePullSecret)}]'
+      oc patch mch multiclusterhub -n $(inputs.params.namespace) --type=json -p '[{"op": "replace", "path": "/spec/imagePullSecret", "value": $(inputs.params.imagePullSecret)}]'
 
       _ATTEMPTS=0
       until oc get mch multiclusterhub -n $(inputs.params.namespace) -o jsonpath={'.status.phase'} | grep "Running";

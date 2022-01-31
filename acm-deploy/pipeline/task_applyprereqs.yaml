@@ -12,25 +12,25 @@ spec:
     default: open-cluster-management
     description: The namespace to deploy ACM into
     type: string
-  # - name: imagePullSecretName
-  #   default: "The name of the image pull secret used to deploy the catalogsources. Copied from clusterPoolNamespace"
-  #   description: The namespace to deploy ACM into
-  #   type: string
-  # - name: imagePullSecret
-  #   default: ""
-  #   description: The image pull secret used to deploy the catalogsources. Copied from clusterPoolNamespace
-  #   type: string
-  # - name: snapshotTag
-  #   default: ""
-  #   description: The SNAPSHOT Tag used to deploy the catalogsources
-  #   type: string
+  - name: imagePullSecretName
+    default: "The name of the image pull secret used to deploy the catalogsources. Copied from clusterPoolNamespace"
+    description: The namespace to deploy ACM into
+    type: string
+  - name: imagePullSecret
+    default: ""
+    description: The image pull secret used to deploy the catalogsources. Copied from clusterPoolNamespace
+    type: string
+  - name: snapshot
+    default: ""
+    description: The SNAPSHOT Tag used to deploy the catalogsources
+    type: string
   steps:
   - args:
     - |-
       #!/bin/bash
       set -e
 
-      # echo $(inputs.params.snapshotTag)
+      # echo $(inputs.params.snapshot)
 
       _LOGIN_CMD=$(cat login.sh)
       eval "$_LOGIN_CMD"
@@ -39,51 +39,56 @@ spec:
       oc create namespace $(inputs.params.namespace) --dry-run=client -o yaml | oc apply -f -
       
 
-      ## UNCOMMENT TO SUPPORT PRIVATE CATALOGSOURCES...
-      # echo "Creating ImagePullSecret..."
-      # _TEMPLATE="apiVersion: v1
-      # data:
-      #   .dockerconfigjson: $(inputs.params.imagePullSecret)
-      # kind: Secret
-      # metadata:
-      #   name: $(inputs.params.imagePullSecretName)
-      # type: kubernetes.io/dockerconfigjson"
-      # echo "$_TEMPLATE" | oc apply -n $(inputs.params.namespace) -f  -
-      # echo "$_TEMPLATE" | oc apply -n openshift-marketplace -f -
+      # UNCOMMENT TO SUPPORT PRIVATE CATALOGSOURCES...
+      echo "Creating ImagePullSecret..."
+      _TEMPLATE="apiVersion: v1
+      data:
+        .dockerconfigjson: $(inputs.params.imagePullSecret)
+      kind: Secret
+      metadata:
+        name: $(inputs.params.imagePullSecretName)
+      type: kubernetes.io/dockerconfigjson"
+      echo "$_TEMPLATE" | oc apply -n $(inputs.params.namespace) -f  -
+      echo "$_TEMPLATE" | oc apply -n openshift-marketplace -f -
 
-      # echo "Creating CatalogSource..."
+      echo "Creating CatalogSource..."
 
-      # _TEMPLATE="apiVersion: operators.coreos.com/v1alpha1
-      # kind: CatalogSource
-      # metadata:
-      #   name: acm-custom-registry
-      #   namespace: openshift-marketplace
-      # spec:
-      #   displayName: Advanced Cluster Management
-      #   image: quay.io/stolostron/acm-custom-registry:$(inputs.params.snapshotTag)
-      #   publisher: Red Hat
-      #   secrets:
-      #   - $(inputs.params.imagePullSecretName)
-      #   sourceType: grpc
-      #   updateStrategy:
-      #     registryPoll:
-      #       interval: 10m"
-      # echo "$_TEMPLATE" | oc apply -f -
+      _TEMPLATE="apiVersion: operators.coreos.com/v1alpha1
+      kind: CatalogSource
+      metadata:
+        name: acm-custom-registry
+        namespace: openshift-marketplace
+      spec:
+        displayName: Advanced Cluster Management
+        image: quay.io/stolostron/acm-custom-registry:$(inputs.params.snapshot)
+        publisher: Red Hat
+        secrets:
+        - $(inputs.params.imagePullSecretName)
+        sourceType: grpc
+        updateStrategy:
+          registryPoll:
+            interval: 10m"
+      echo "$_TEMPLATE" | oc apply -f -
 
-      # _TEMPLATE="apiVersion: operators.coreos.com/v1alpha1
-      # kind: CatalogSource
-      # metadata:
-      #   name: multiclusterengine-catalog
-      #   namespace: openshift-marketplace
-      # spec:
-      #   displayName: MultiCluster Engine
-      #   image: quay.io/stolostron/cmb-custom-registry:$(inputs.params.snapshotTag)
-      #   publisher: Red Hat
-      #   sourceType: grpc
-      #   updateStrategy:
-      #     registryPoll:
-      #       interval: 10m"
-      # echo "$_TEMPLATE" | oc apply -f -
+      _TEMPLATE="apiVersion: operators.coreos.com/v1alpha1
+      kind: CatalogSource
+      metadata:
+        name: multiclusterengine-catalog
+        namespace: openshift-marketplace
+      spec:
+        displayName: MultiCluster Engine
+        image: quay.io/stolostron/cmb-custom-registry:$(inputs.params.snapshot)
+        publisher: Red Hat
+        sourceType: grpc
+        updateStrategy:
+          registryPoll:
+            interval: 10m"
+
+
+      ## If 2.5.0 or greater, apply MCE catalogsource
+      if [[ $DEFAULT_SNAPSHOT =~ v{0,1}[2-9]\.[5-9]+\.[0-9]+.* ]]; then
+        echo "$_TEMPLATE" | oc apply -f -
+      fi
 
       # echo "Sleeping for 1 minute..."
       # sleep 60
