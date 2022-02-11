@@ -4,10 +4,6 @@ metadata:
   name: apply-acm-prereqs
 spec:
   params:
-  - name: logincmd
-    default: ""
-    description: The command to login to the claimed cluster
-    type: string
   - name: namespace
     default: open-cluster-management
     description: The namespace to deploy ACM into
@@ -29,8 +25,6 @@ spec:
     - |-
       #!/bin/bash
       set -e
-
-      # echo $(inputs.params.snapshot)
 
       _LOGIN_CMD=$(cat login.sh)
       eval "$_LOGIN_CMD"
@@ -86,6 +80,7 @@ spec:
 
 
       ## If 2.5.0 or greater, apply MCE catalogsource
+      DEFAULT_SNAPSHOT=$(inputs.params.snapshot)
       if [[ $DEFAULT_SNAPSHOT =~ v{0,1}[2-9]\.[5-9]+\.[0-9]+.* ]]; then
         echo "$_TEMPLATE" | oc apply -f -
       fi

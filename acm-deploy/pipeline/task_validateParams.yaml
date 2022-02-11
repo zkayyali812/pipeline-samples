@@ -1,0 +1,112 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: validate-acm-deploy-params
+spec:
+  params:
+  - name: clusterPoolName
+    default: ""
+    description: The namespace to search for the clusterpool
+    type: string
+  - name: clusterPoolNamespace
+    default: ""
+    description: The name of the clusterpool to use
+    type: string
+  - name: awsCredsSecret
+    default: ""
+    description: The name of the AWS Credentials Secret used to deploy HyperShift. Must exist in clusterPoolNamespace
+    type: string
+  - name: clusterClaimLifetime
+    default: ""
+    description: The length of the lifetime of the clusterclaim
+    type: string
+  - name: imagePullSecret
+    default: ""
+    description: The imagePullSecret used to pull the ACM images. Must exist in clusterPoolNamespace
+    type: string
+  - name: ocpPullSecret
+    default: ""
+    description: The name of the secret containing the OCP pull secret used to deploy a HyperShift HostedCluster.
+    type: string
+  steps:
+  - args:
+    - |-
+      #!/bin/bash
+      set -e
+
+      # Validate Clusterpool exists
+      # Validate AWS Creds secret exists
+      # Validate clusterClaimLifetime ends in 'h'
+      # Validates imagePullSecretExists
+      # Validates ocpPullSecretExists and is formatted with proper key
+
+      _NAMESPACE=$(inputs.params.clusterPoolNamespace)
+
+      echo "For help with script see instrctions- https://github.com/zkayyali812/pipeline-samples"
+
+      oc get clusterpool -n ${_NAMESPACE} $(inputs.params.clusterPoolName)
+      if [[ $? == 0 ]]; then
+        echo "Clusterpool exists"
+      else
+        echo "Unable to locate clusterpool: $(inputs.params.clusterPoolName) in namespace: $(inputs.params.clusterPoolNamespace)"
+        exit 1
+      fi
+
+      oc get secret -n ${_NAMESPACE} $(inputs.params.awsCredsSecret)
+      if [[ $? == 0 ]]; then
+        echo "AWS Secret exists"
+      else
+        echo "Unable to locate aws secret: $(inputs.params.awsCredsSecret) in namespace: $(inputs.params.clusterPoolNamespace)"
+        exit 1
+      fi
+
+      _ACCESS_KEY_ID=$(oc get secret -n ${_NAMESPACE} $(inputs.params.awsCredsSecret) -o jsonpath='{.data.aws_access_key_id}') 
+      _SECRET_KEY=$(oc get secret -n ${_NAMESPACE} $(inputs.params.awsCredsSecret) -o jsonpath='{.data.aws_secret_access_key}')
+      if [[ "$_ACCESS_KEY_ID" != ""  && "$_SECRET_KEY" != "" ]]; then
+        echo "AWS Secret exists and appears valid"
+      else
+        echo "AWS Secret appears invalid"
+        exit 1
+      fi
+
+
+      _CLUSTERCLAIMLIFETIME=$(inputs.params.clusterClaimLifetime)
+      if [[ "${_CLUSTERCLAIMLIFETIME: -1}" == 'h' ]]; then
+        echo "ClusterClaimLifetime is valid"
+      else
+        echo "clusterClaimLifetime must end in 'h'"
+        exit 1
+      fi
+
+      oc get secret -n ${_NAMESPACE} $(inputs.params.imagePullSecret)
+      if [[ $? == 0 ]]; then
+        echo "imagePullSecret exists"
+      else
+        echo "Unable to locate imagePullSecret: $(inputs.params.imagePullSecret) in namespace: $(inputs.params.clusterPoolNamespace)"
+        exit 1
+      fi
+
+      oc get secret -n ${_NAMESPACE} $(inputs.params.ocpPullSecret)
+      if [[ $? == 0 ]]; then
+        echo "ocpPullSecret exists"
+      else
+        echo "Unable to locate ocpPullSecret: $(inputs.params.ocpPullSecret) in namespace: $(inputs.params.clusterPoolNamespace)"
+        exit 1
+      fi
+
+      _PULL_SECRET=$(oc get secret -n ${_NAMESPACE} $(inputs.params.ocpPullSecret) -o yaml | yq eval '.data.pull-secret' -)
+      if [[ "$_PULL_SECRET" != "" ]]; then
+        echo "ocpPullSecret exists and appears valid"
+      else
+        echo "ocpPullSecret appears invalid"
+        exit 1
+      fi
+    command:
+    - /bin/bash
+    - -c
+    image: quay.io/zkayyali812/ocm-utils:latest
+    name: apply
+    resources: {}
+    workingDir: /workspace/source
+  workspaces:
+  - name: source

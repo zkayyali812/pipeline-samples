@@ -1,0 +1,74 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: apply-hypershift-hosted-cluster
+spec:
+  params:
+  - name: hostedClusterName
+    default: ""
+    description: The namespace to deploy ACM into
+    type: string
+  - name: baseDomain
+    default: ""
+    description: The baseDomain to deploy the hostedcluster into
+    type: string
+  - name: S3BucketName
+    default: ""
+    description: The name of the S3 Bucket used for HyperShift
+    type: string
+  - name: region
+    default: ""
+    description: The AWS region used
+    type: string
+  - name: ocpPullSecret
+    default: ""
+    description: The string value OCP pull secret used to deploy a HyperShift HostedCluster. Copied from - https://console.redhat.com/openshift/install/aws/installer-provisioned
+    type: string
+  steps:
+  - args:
+    - |-
+      #!/bin/bash
+      set -e
+
+      _LOGIN_CMD=$(cat login.sh)
+      eval "$_LOGIN_CMD"
+
+      mkdir -p ${HOME}/.kube
+      export KUBECONFIG=${HOME}/.kube/config
+
+      cd hypershift/
+      _CLUSTER_NAME=$(inputs.params.hostedClusterName)
+      _BASE_DOMAIN=$(inputs.params.baseDomain)
+
+      if [ -z "$_CLUSTER_NAME" ]
+      then
+            echo "No hosted cluster name is provided. Exiting successfully."
+            exit 0
+      fi
+      if [ -z "$_BASE_DOMAIN" ]
+      then
+            echo "Basedomain must be provided to create a hostedcluster"
+            exit 1
+      fi
+      
+      _BUCKET_NAME=$(inputs.params.S3BucketName)
+      _REGION=$(inputs.params.region)
+      _AWS_CREDS="../.awscredentials"
+      _OCP_PULL_SECRET="../ocpPullSecret.txt"
+
+      ./bin/hypershift create cluster aws \
+      --name $_CLUSTER_NAME \
+      --node-pool-replicas=3 \
+      --base-domain $_BASE_DOMAIN \
+      --pull-secret $_OCP_PULL_SECRET \
+      --aws-creds $_AWS_CREDS \
+      --region $_REGION
+    command:
+    - /bin/bash
+    - -c
+    image: quay.io/zkayyali812/ocm-utils:latest
+    name: apply
+    resources: {}
+    workingDir: /workspace/source
+  workspaces:
+  - name: source

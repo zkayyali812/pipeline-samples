@@ -36,6 +36,10 @@ spec:
     type: string
     description: The name of the AWS Credentials Secret used to deploy HyperShift. Must exist in clusterPoolNamespace
     default: "aws-creds"
+  - name: ocpPullSecret
+    type: string
+    description: The name of the secret containing the OCP pull secret used to deploy a HyperShift HostedCluster.
+    default: "ocp-pull-secret"
   - name: S3BucketName
     type: string
     description: The name of the S3 Bucket used for HyperShift
@@ -44,6 +48,14 @@ spec:
     type: string
     description: The AWS region used
     default: "us-east-1"
+  - name: hostedClusterName
+    type: string
+    description: If empty, no hostedcluster is deployed. Else a HostedCluster with the given name is created
+    default: ""
+  - name: baseDomain
+    type: string
+    description: The baseDomain to deploy the hostedcluster into
+    default: ""
   tasks:
   - name: fetch-repo-samples
     params:
@@ -68,7 +80,7 @@ spec:
     - name: url
       value: https://github.com/openshift/hypershift.git
     - name: revision
-      value: main
+      value: release-4.10
     - name: deleteExisting
       value: "true"
     - name: subdirectory
@@ -99,6 +111,26 @@ spec:
     workspaces:
     - name: output
       workspace: shared-workspace
+  - name: validate-acm-deploy-params
+    params:
+    - name: clusterPoolName
+      value: $(params.clusterPoolName)
+    - name: clusterPoolNamespace
+      value: $(params.clusterPoolNamespace)
+    - name: awsCredsSecret
+      value: $(params.awsCredsSecret)
+    - name: clusterClaimLifetime
+      value: $(params.clusterClaimLifetime)
+    - name: imagePullSecret
+      value: $(params.imagePullSecret)
+    - name: ocpPullSecret
+      value: $(params.ocpPullSecret)
+    taskRef:
+      kind: Task
+      name: validate-acm-deploy-params
+    workspaces:
+    - name: source
+      workspace: shared-workspace
   - name: checkout-cluster
     params:
     - name: clusterClaimName
@@ -113,8 +145,11 @@ spec:
       value: $(params.clusterClaimLifetime)
     - name: imagePullSecret
       value: $(params.imagePullSecret)
+    - name: ocpPullSecret
+      value: $(params.ocpPullSecret)
     runAfter:
     - fetch-repo-samples
+    - validate-acm-deploy-params
     taskRef:
       kind: Task
       name: checkout-cluster
@@ -207,9 +242,30 @@ spec:
     runAfter:
     - fetch-repo-hypershift-deployment
     - apply-hypershift
+    - apply-and-wait-for-mch
     taskRef:
       kind: Task
       name: apply-hypershift-deployment-controller
+    workspaces:
+    - name: source
+      workspace: shared-workspace
+  - name: deploy-hosted-cluster
+    params:
+    - name: hostedClusterName
+      value: $(params.hostedClusterName)
+    - name: baseDomain
+      value: $(params.baseDomain)
+    - name: S3BucketName
+      value: $(params.S3BucketName)
+    - name: region
+      value: $(params.region)
+    - name: ocpPullSecret
+      value: $(params.ocpPullSecret)
+    runAfter:
+    - apply-hypershift-deployment-controller
+    taskRef:
+      kind: Task
+      name: apply-hypershift-hosted-cluster
     workspaces:
     - name: source
       workspace: shared-workspace

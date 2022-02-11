@@ -34,7 +34,7 @@ spec:
 
       _BUCKET_NAME=$(inputs.params.S3BucketName)
       _REGION=$(inputs.params.region)
-      _AWS_CREDS="../awsCredentials.txt"
+      _AWS_CREDS="../.awscredentials"
 
       ./bin/hypershift install \
       --oidc-storage-provider-s3-bucket-name $_BUCKET_NAME \

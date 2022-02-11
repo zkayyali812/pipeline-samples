@@ -22,11 +22,12 @@ spec:
       #!/bin/bash
       set -e
 
-      LOGINDCMD="oc login $(inputs.params.api) -u $(inputs.params.username) -p $(inputs.params.password) --insecure-skip-tls-verify=true"
-      eval $LOGINDCMD
+      LOGINCMD="oc login $(inputs.params.api) -u $(inputs.params.username) -p $(inputs.params.password) --insecure-skip-tls-verify=true"
+      eval $LOGINCMD
       
-      echo $LOGINDCMD > login.sh
-      echo $LOGINDCMD
+      echo $LOGINCMD > login.sh
+      echo $LOGINCMD
+      ls
 
     command:
     - /bin/bash
