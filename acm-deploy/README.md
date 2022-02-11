@@ -6,6 +6,8 @@ This Pipeline is intended to help enablement of development alongside ACM/HyperS
 
 Currently this Pipeline is installed onto the `Collective` cluster, in the `managed-services` namespace.
 
+It is recommended to read the [HyperShift getting started](https://hypershift-docs.netlify.app/getting-started/) before using this Pipeline.
+
 The Pipeline currently takes into account the following parameters - 
 
 1. **ClusterPoolNamespace**: On the cluster the pipeline is installed in, this is the name of the namespace of the clusterpool to use.
