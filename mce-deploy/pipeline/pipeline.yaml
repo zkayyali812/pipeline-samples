@@ -27,7 +27,7 @@ spec:
   - name: snapshot
     type: string
     description: The upstream SNAPSHOT to used to deploy MCE
-    default: "SNAPSHOT"
+    default: "2.0-latest"
   - name: imagePullSecret
     type: string
     description: The imagePullSecret used to pull the MCE images. Must exist in clusterPoolNamespace
@@ -136,7 +136,7 @@ spec:
     workspaces:
     - name: source
       workspace: shared-workspace
-  - name: ensure-mch-is-running
+  - name: ensure-mce-is-running
     params:
     - name: namespace
       value: $(params.namespace)
@@ -146,7 +146,7 @@ spec:
     - ensure-mce-sub-is-running
     taskRef:
       kind: Task
-      name: ensure-mch-is-running
+      name: ensure-mce-is-running
     workspaces:
     - name: source
       workspace: shared-workspace

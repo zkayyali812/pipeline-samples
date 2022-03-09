@@ -22,7 +22,6 @@ spec:
       eval "$_LOGIN_CMD"
 
       oc apply -f samples/mce-deploy/resources/multiclusterengine.yaml
-      oc patch mce multiclusterengine-sample --type=json -p '[{"op": "replace", "path": "/spec/targetNamespace", "value": $(inputs.params.imagePullSecret)}]'
 
       _ATTEMPTS=0
       until oc get mce multiclusterengine-sample -o jsonpath={'.status.phase'} | grep "Available";

@@ -60,11 +60,12 @@ spec:
         updateStrategy:
           registryPoll:
             interval: 10m"
-      echo "$_TEMPLATE" | oc apply -f -i
+      echo "$_TEMPLATE" | oc apply -f -
 
-      # echo "Sleeping for 1 minute..."
-      # sleep 60
+      echo "Applying cluster and machine autoscaling ..."
 
+      oc apply -f samples/mce-deploy/resources/clusterautoscaler.yaml
+      oc apply -f samples/mce-deploy/resources/machineautoscaler.yaml
     command:
     - /bin/bash
     - -c
