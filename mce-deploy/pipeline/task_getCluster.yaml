@@ -16,10 +16,6 @@ spec:
     default: managed-services
     description: The namespace to search for the clusterpool
     type: string
-  - name: awsCredsSecret
-    default: aws-creds
-    description: The name of the AWS Credentials Secret used to deploy HyperShift. Must exist in clusterPoolNamespace
-    type: string
   - name: clusterClaimLifetime
     default: "8h"
     description: The length of the lifetime of the clusterclaim
@@ -27,10 +23,6 @@ spec:
   - name: imagePullSecret
     default: "multiclusterhub-operator-pull-secret"
     description: The imagePullSecret used to pull the ACM images. Must exist in clusterPoolNamespace
-    type: string
-  - name: ocpPullSecret
-    default: "{}"
-    description: The string value OCP pull secret used to deploy a HyperShift HostedCluster. Copied from - https://console.redhat.com/openshift/install/aws/installer-provisioned
     type: string
   results:
   - name: username
@@ -70,19 +62,7 @@ spec:
       _PASSWORD=$(oc get secret ${CD_INFO} -n ${NAMESPACE} -o jsonpath='{.data.password}' | base64 -d  )
       _API_URL=$(oc get cd ${NAMESPACE} -n ${NAMESPACE} -o jsonpath='{.status.apiURL}' )
       
-      oc get secret $(inputs.params.awsCredsSecret) -n $(inputs.params.clusterPoolNamespace) -o yaml | yq eval '.data' - > .awscredentials
-      _ACCESS_KEY_ID=$(oc get secret $(inputs.params.awsCredsSecret) -n $(inputs.params.clusterPoolNamespace) -o yaml | yq eval '.data.aws_access_key_id' - | base64 -d)
-      _SECRET_ACCESS_KEY=$(oc get secret $(inputs.params.awsCredsSecret) -n $(inputs.params.clusterPoolNamespace) -o yaml | yq eval '.data.aws_secret_access_key' - | base64 -d)
       oc get secret -n ${NAMESPACE} ${KUBECONFIG_SECRET} -o yaml | yq eval '.data.kubeconfig' - | base64 -d > kubeconfig.yaml
-      
-
-      _OCP_PULL_SECRET=$(oc get secret $(inputs.params.ocpPullSecret) -n $(inputs.params.clusterPoolNamespace) -o yaml | yq eval '.data.pull-secret' - | base64 -d)
-      echo "${_OCP_PULL_SECRET}" | jq . -M > ocpPullSecret.txt
-
-      touch .awscredentials
-      echo "[default]
-      aws_access_key_id = ${_ACCESS_KEY_ID}
-      aws_secret_access_key = ${_SECRET_ACCESS_KEY}" > .awscredentials
       
       _IMAGE_PULL_SECRET=$(oc get secret -n $(inputs.params.clusterPoolNamespace) $(inputs.params.imagePullSecret) -o yaml | yq eval '.data.".dockerconfigjson"' -)
 

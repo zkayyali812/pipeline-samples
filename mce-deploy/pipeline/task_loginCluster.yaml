@@ -27,7 +27,6 @@ spec:
       
       echo $LOGINCMD > login.sh
       echo $LOGINCMD
-      ls
 
     command:
     - /bin/bash

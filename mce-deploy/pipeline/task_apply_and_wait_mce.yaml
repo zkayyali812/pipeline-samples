@@ -1,12 +1,12 @@
 apiVersion: tekton.dev/v1beta1
 kind: Task
 metadata:
-  name: apply-and-wait-for-mch
+  name: ensure-mce-is-running
 spec:
   params:
   - name: namespace
     default: open-cluster-management
-    description: The namespace to deploy ACM into
+    description: The namespace to deploy MCE into
     type: string
   - name: imagePullSecret
     default: multiclusterhub-operator-pull-secret
@@ -21,17 +21,17 @@ spec:
       _LOGIN_CMD=$(cat login.sh)
       eval "$_LOGIN_CMD"
 
-      oc apply -f samples/acm-deploy/resources/acm_mch.yaml -n $(inputs.params.namespace)
-      oc patch mch multiclusterhub -n $(inputs.params.namespace) --type=json -p '[{"op": "replace", "path": "/spec/imagePullSecret", "value": $(inputs.params.imagePullSecret)}]'
+      oc apply -f samples/mce-deploy/resources/multiclusterengine.yaml
+      oc patch mce multiclusterengine-sample --type=json -p '[{"op": "replace", "path": "/spec/targetNamespace", "value": $(inputs.params.imagePullSecret)}]'
 
       _ATTEMPTS=0
-      until oc get mch multiclusterhub -n $(inputs.params.namespace) -o jsonpath={'.status.phase'} | grep "Running";
+      until oc get mce multiclusterengine-sample -o jsonpath={'.status.phase'} | grep "Available";
       do 
-          echo "Waiting for MCH to enter a running state..."
+          echo "Waiting for MCE to enter a Available state..."
           _ATTEMPTS=$((_ATTEMPTS + 1))
           sleep 15;
           if [[ $_ATTEMPTS == 30 ]]; then
-              echo "Failed to install the MCH in allotted time"
+              echo "Failed to install the MCE in allotted time"
               exit 1
           fi
       done

@@ -1,12 +1,16 @@
 apiVersion: tekton.dev/v1beta1
 kind: Task
 metadata:
-  name: apply-acm-prereqs
+  name: ensure-mce-deploy-prereqs
 spec:
   params:
   - name: namespace
     default: open-cluster-management
     description: The namespace to deploy ACM into
+    type: string
+  - name: snapshot
+    default: ""
+    description: The SNAPSHOT Tag used to deploy the catalogsources
     type: string
   - name: imagePullSecretName
     default: "The name of the image pull secret used to deploy the catalogsources. Copied from clusterPoolNamespace"
@@ -15,10 +19,6 @@ spec:
   - name: imagePullSecret
     default: ""
     description: The image pull secret used to deploy the catalogsources. Copied from clusterPoolNamespace
-    type: string
-  - name: snapshot
-    default: ""
-    description: The SNAPSHOT Tag used to deploy the catalogsources
     type: string
   steps:
   - args:
@@ -45,24 +45,7 @@ spec:
       echo "$_TEMPLATE" | oc apply -n $(inputs.params.namespace) -f  -
       echo "$_TEMPLATE" | oc apply -n openshift-marketplace -f -
 
-      echo "Creating CatalogSource..."
-
-      _TEMPLATE="apiVersion: operators.coreos.com/v1alpha1
-      kind: CatalogSource
-      metadata:
-        name: acm-custom-registry
-        namespace: openshift-marketplace
-      spec:
-        displayName: Advanced Cluster Management
-        image: quay.io/stolostron/acm-custom-registry:$(inputs.params.snapshot)
-        publisher: Red Hat
-        secrets:
-        - $(inputs.params.imagePullSecretName)
-        sourceType: grpc
-        updateStrategy:
-          registryPoll:
-            interval: 10m"
-      echo "$_TEMPLATE" | oc apply -f -
+      echo "Creating MCE CatalogSource..."
 
       _TEMPLATE="apiVersion: operators.coreos.com/v1alpha1
       kind: CatalogSource
@@ -77,13 +60,7 @@ spec:
         updateStrategy:
           registryPoll:
             interval: 10m"
-
-
-      ## If 2.5.0 or greater, apply MCE catalogsource
-      DEFAULT_SNAPSHOT=$(inputs.params.snapshot)
-      if [[ $DEFAULT_SNAPSHOT =~ v{0,1}[2-9]\.[5-9]+\.[0-9]+.* ]]; then
-        echo "$_TEMPLATE" | oc apply -f -
-      fi
+      echo "$_TEMPLATE" | oc apply -f -i
 
       # echo "Sleeping for 1 minute..."
       # sleep 60

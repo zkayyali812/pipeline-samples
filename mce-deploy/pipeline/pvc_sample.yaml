@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: acm-deploy-pipeline-pvc
+  name: mce-deploy-pipeline-pvc
 spec:
   accessModes:
   - ReadWriteOnce
