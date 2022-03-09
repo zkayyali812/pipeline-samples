@@ -3,7 +3,7 @@ global:
     hypershift_deployment_controller: "quay.io/stolostron/hypershift-deployment-controller@sha256:6e4e879bd40d89ad6bb011d0b3b66f53e8ac515db643378fabc30f68b7f8a46d"
     hypershift_addon_operator: "quay.io/stolostron/hypershift-addon-operator@sha256:c78c6e3b549103887952d0515ac02565f4f7c8bbda717fa0177d6d64a8e1fd48"
     hypershift_operator: "quay.io/stolostron/hypershift@sha256:1b4a94bb03270cb05ad31c9267f667ff58edd8f2992926b5b118bab64bdfb896"
-  namespace: default
+  namespace: multicluster-engine
   pullSecret: null
 hubconfig:
   nodeSelector: null
