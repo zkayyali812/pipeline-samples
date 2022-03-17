@@ -2,4 +2,10 @@ apiVersion: multicluster.openshift.io/v1
 kind: MultiClusterEngine
 metadata:
   name: multiclusterengine-sample
-spec: {}
+spec:
+  availabilityConfig: High
+  overrides:
+    components:
+    - enabled: true
+      name: hypershift-preview
+  targetNamespace: multicluster-engine
