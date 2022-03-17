@@ -150,17 +150,5 @@ spec:
     workspaces:
     - name: source
       workspace: shared-workspace
-  - name: ensure-hypershift-is-installed-hack
-    params:
-    - name: namespace
-      value: $(params.namespace)
-    runAfter:
-    - ensure-mce-is-running
-    taskRef:
-      kind: Task
-      name:  ensure-hypershift-is-installed-hack
-    workspaces:
-    - name: source
-      workspace: shared-workspace
   workspaces:
   - name: shared-workspace
