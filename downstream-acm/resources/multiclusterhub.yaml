@@ -6,3 +6,7 @@ metadata:
   name: multiclusterhub
 spec:
   imagePullSecret: acm-pull-secret
+  overrides:
+    components:
+    - enabled: true
+      name: hypershift-preview

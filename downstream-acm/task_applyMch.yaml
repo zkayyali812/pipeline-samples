@@ -1,16 +1,12 @@
 apiVersion: tekton.dev/v1beta1
 kind: Task
 metadata:
-  name: ensure-mce-is-running
+  name: deploy-ds-acm-hyper-apply-mch
 spec:
   params:
   - name: namespace
     default: open-cluster-management
     description: The namespace to deploy MCE into
-    type: string
-  - name: imagePullSecret
-    default: multiclusterhub-operator-pull-secret
-    description: The image pull secret used to deploy the catalogsources in 'openshift-marketplace' namespace
     type: string
   steps:
   - args:
@@ -20,7 +16,8 @@ spec:
 
       _LOGIN_CMD=$(cat login.sh)
       eval "$_LOGIN_CMD"
-
+      oc project $(inputs.params.namespace)
+      
       oc apply -f samples/downstream-acm/resources/multiclusterhub.yaml
 
       _ATTEMPTS=0
