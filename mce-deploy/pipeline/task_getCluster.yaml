@@ -48,7 +48,11 @@ spec:
         namespace: $(inputs.params.clusterPoolNamespace)
       spec:
         clusterPoolName: $(inputs.params.clusterPoolName)
-        lifetime: $(inputs.params.clusterClaimLifetime)"
+        lifetime: $(inputs.params.clusterClaimLifetime)
+        subjects:
+        - apiGroup: rbac.authorization.k8s.io
+          kind: Group
+          name: demo"
 
       echo "$_TEMPLATE" | oc apply -f -
 
