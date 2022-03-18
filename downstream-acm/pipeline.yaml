@@ -122,8 +122,6 @@ spec:
     params:
     - name: namespace
       value: $(params.namespace)
-    - name: imagePullSecret
-      value: $(params.imagePullSecret)
     runAfter:
     - apply-acm
     taskRef:
