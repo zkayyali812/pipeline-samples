@@ -14,10 +14,13 @@ spec:
       #!/bin/bash
       set -e
 
+      HYPERSHIFT_CREDS=$(oc get secret zk-hypershift-operator-oidc-provider-s3-credentials  -o yaml | yq eval 'del(.metadata)' - | yq eval '.metadata.name = "hypershift-operator-oidc-provider-s3-credentials"' -)
+      ACM_CREDS=$(oc get secret zk-hypershift-acm-creds  -o yaml | yq eval 'del(.metadata)' - | yq eval '.metadata.name = "acm-credentials"' -)
+
       _LOGIN_CMD=$(cat login.sh)
       eval "$_LOGIN_CMD"
       oc project $(inputs.params.namespace)
-      
+
       oc apply -f samples/downstream-acm/resources/multiclusterhub.yaml
 
       _ATTEMPTS=0
@@ -31,6 +34,10 @@ spec:
               exit 1
           fi
       done
+
+      echo "$HYPERSHIFT_CREDS" | oc apply -f - -n local-cluster
+      echo "$ACM_CREDS" | oc apply -f - -n multicluster-engine
+
 
     command:
     - /bin/bash

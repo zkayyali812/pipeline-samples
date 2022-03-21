@@ -130,5 +130,17 @@ spec:
     workspaces:
     - name: source
       workspace: shared-workspace
+  - name: apply-hypershiftdeployment
+    params:
+    - name: namespace
+      value: $(params.namespace)
+    runAfter:
+    - apply-acm
+    taskRef:
+      kind: Task
+      name: deploy-ds-acm-hyper-apply-hyper-deployment
+    workspaces:
+    - name: source
+      workspace: shared-workspace
   workspaces:
   - name: shared-workspace
