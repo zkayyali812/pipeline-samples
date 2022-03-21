@@ -7,7 +7,7 @@ spec:
   - name: clusterPoolName
     type: string
     description: The name of the clusterpool to use
-    default: "policy-aas-hubs"
+    default: "hypershift-cluster-pool"
   - name: clusterClaimName
     type: string
     description: The name of the clusterclaim to claim
@@ -135,7 +135,7 @@ spec:
     - name: namespace
       value: $(params.namespace)
     runAfter:
-    - apply-acm
+    - apply-mch
     taskRef:
       kind: Task
       name: deploy-ds-acm-hyper-apply-hyper-deployment

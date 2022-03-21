@@ -37,6 +37,9 @@ spec:
 
       echo "$HYPERSHIFT_CREDS" | oc apply -f - -n local-cluster
       echo "$ACM_CREDS" | oc apply -f - -n multicluster-engine
+      echo "Applying HyperShift ManagedClusterAddon ..."
+      oc apply -f samples/downstream-acm/resources/hypershift-addon.yaml
+
 
 
     command:
