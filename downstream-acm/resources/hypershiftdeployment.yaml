@@ -2,7 +2,6 @@ apiVersion: cluster.open-cluster-management.io/v1alpha1
 kind: HypershiftDeployment
 metadata:
   name: hypershift-demo
-  namespace: multicluster-engine
 spec:
   targetManagedCluster: local-cluster
   targetNamespace: clusters       # issue see https://github.com/stolostron/hypershift-deployment-controller/issues/30
