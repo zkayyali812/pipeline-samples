@@ -17,7 +17,7 @@ spec:
       _LOGIN_CMD=$(cat login.sh)
       eval "$_LOGIN_CMD"
 
-      oc project local-cluster
+      oc project multicluster-engine
       oc create ns clusters || true
       oc apply -f samples/downstream-acm/resources/hypershiftdeployment.yaml
 
@@ -32,6 +32,9 @@ spec:
               exit 1
           fi
       done
+      
+      echo "Sleeping 5 mins before applying workaround ..."
+      sleep 300
 
       echo "Applying Temporary workaround ..."
       oc annotate -n clusters hostedcluster/hypershift-demo hypershift.openshift.io/control-plane-operator-image=quay.io/hypershift/hypershift-operator:latest
