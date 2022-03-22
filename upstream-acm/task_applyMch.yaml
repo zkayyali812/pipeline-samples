@@ -1,0 +1,56 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: deploy-us-acm-hyper-apply-mch
+spec:
+  params:
+  - name: namespace
+    default: open-cluster-management
+    description: The namespace to deploy MCE into
+    type: string
+  steps:
+  - args:
+    - |-
+      #!/bin/bash
+      set -e
+
+      HYPERSHIFT_CREDS=$(oc get secret zk-hypershift-operator-oidc-provider-s3-credentials  -o yaml | yq eval 'del(.metadata)' - | yq eval '.metadata.name = "hypershift-operator-oidc-provider-s3-credentials"' -)
+      ACM_CREDS=$(oc get secret zk-hypershift-acm-creds  -o yaml | yq eval 'del(.metadata)' - | yq eval '.metadata.name = "acm-credentials"' -)
+
+      _LOGIN_CMD=$(cat login.sh)
+      eval "$_LOGIN_CMD"
+      oc project $(inputs.params.namespace)
+
+      oc apply -f samples/upstream-acm/resources/multiclusterhub.yaml
+
+      _ATTEMPTS=0
+      until oc get mch multiclusterhub -o jsonpath={'.status.phase'} | grep "Running";
+      do 
+          echo "Waiting for MCH to enter a Running state..."
+          _ATTEMPTS=$((_ATTEMPTS + 1))
+          sleep 15;
+          if [[ $_ATTEMPTS == 30 ]]; then
+              echo "Failed to install the MCH in allotted time"
+              exit 1
+          fi
+      done
+
+      echo "$HYPERSHIFT_CREDS" | oc apply -f - -n local-cluster
+      echo "$ACM_CREDS" | oc apply -f - -n multicluster-engine
+      echo "Applying HyperShift ManagedClusterAddon ..."
+      oc apply -f samples/upstream-acm/resources/hypershift-addon.yaml
+      echo "Waiting for pod to be available"
+
+      sleep 120
+
+
+
+    command:
+    - /bin/bash
+    - -c
+    image: quay.io/zkayyali812/ocm-utils:latest
+    name: apply
+    resources: {}
+    workingDir: /workspace/source
+  workspaces:
+  - name: source
