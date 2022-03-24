@@ -51,7 +51,7 @@ spec:
       value: $(params.clusterClaimLifetime)
     taskRef:
       kind: Task
-      name: deploy-us-acm-hyper-param-validation
+      name: deploy-acm-hyper-param-validation
     workspaces:
     - name: source
       workspace: shared-workspace
@@ -68,7 +68,7 @@ spec:
     - validate-parameters
     taskRef:
       kind: Task
-      name: deploy-us-acm-hyper-checkout-cluster
+      name: deploy-acm-hyper-checkout-cluster
     workspaces:
     - name: source
       workspace: shared-workspace
@@ -84,7 +84,7 @@ spec:
     - checkout-cluster
     taskRef:
       kind: Task
-      name: deploy-us-acm-hyper-login-to-cluster
+      name: deploy-acm-hyper-login-to-cluster
     workspaces:
     - name: source
       workspace: shared-workspace
@@ -114,7 +114,7 @@ spec:
     - ensure-acm-deploy-prereqs
     taskRef:
       kind: Task
-      name: deploy-us-acm-hyper-apply-sub
+      name: deploy-acm-hyper-apply-sub
     workspaces:
     - name: source
       workspace: shared-workspace

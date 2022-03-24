@@ -1,7 +1,7 @@
 apiVersion: tekton.dev/v1beta1
 kind: Task
 metadata:
-  name: deploy-us-acm-hyper-apply-sub
+  name: deploy-acm-hyper-apply-sub
 spec:
   params:
   - name: namespace
@@ -34,7 +34,7 @@ spec:
         echo "Existing ACM install does not exist"
       fi
 
-      oc apply -f samples/upstream-acm/resources/operatorgroup.yaml
+      oc apply -f samples/hypershift-pipelines/resources/operatorgroup.yaml
       oc patch og default --type=merge -p '{ "spec":  { "targetNamespaces" : ["$(inputs.params.namespace)"]}}'
 
       _TEMPLATE="apiVersion: operators.coreos.com/v1alpha1

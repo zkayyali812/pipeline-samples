@@ -1,7 +1,7 @@
 apiVersion: tekton.dev/v1beta1
 kind: Task
 metadata:
-  name: deploy-us-acm-hyper-apply-hyper-deployment
+  name: deploy-acm-hyper-apply-hyper-deployment
 spec:
   params:
   - name: namespace
@@ -32,12 +32,6 @@ spec:
               exit 1
           fi
       done
-      
-      echo "Sleeping 5 mins before applying workaround ..."
-      sleep 300
-
-      echo "Applying Temporary workaround ..."
-      oc annotate -n clusters hostedcluster/hypershift-demo hypershift.openshift.io/control-plane-operator-image=quay.io/hypershift/hypershift-operator:latest
 
       _ATTEMPTS=0 
       echo "Waiting for HostedCluster deployment to complete ..."

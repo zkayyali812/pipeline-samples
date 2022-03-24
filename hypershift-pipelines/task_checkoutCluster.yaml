@@ -1,7 +1,7 @@
 apiVersion: tekton.dev/v1beta1
 kind: Task
 metadata:
-  name: deploy-us-acm-hyper-checkout-cluster
+  name: deploy-acm-hyper-checkout-cluster
 spec:
   params:
   - name: clusterClaimName

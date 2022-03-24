@@ -1,7 +1,7 @@
 apiVersion: tekton.dev/v1beta1
 kind: Task
 metadata:
-  name: deploy-us-acm-hyper-login-to-cluster
+  name: deploy-acm-hyper-login-to-cluster
 spec:
   params:
   - name: username

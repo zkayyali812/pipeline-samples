@@ -1,7 +1,7 @@
 apiVersion: tekton.dev/v1beta1
 kind: Task
 metadata:
-  name: deploy-us-acm-hyper-param-validation
+  name: deploy-acm-hyper-param-validation
 spec:
   params:
   - name: clusterPoolName
