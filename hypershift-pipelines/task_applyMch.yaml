@@ -34,7 +34,6 @@ spec:
 
       echo "MultiClusterHub is running"
       exit 0
-
     command:
     - /bin/bash
     - -c

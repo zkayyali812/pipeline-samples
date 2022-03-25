@@ -68,6 +68,12 @@ spec:
       echo "$_PASSWORD" | tr -d '\n' > $(results.password.path)
       echo "$_API_URL" | tr -d '\n' > $(results.api.path)
       echo "$_IMAGE_PULL_SECRET" | tr -d '\n' > $(results.imagePullSecret.path)
+
+      echo "API URL of claimed cluster: $_API_URL"
+      echo "Password for the claimed cluster: $_PASSWORD"
+      echo ""
+      echo "Clusterclaim successfully checked out"
+      exit 0
     command:
     - /bin/bash
     - -c
