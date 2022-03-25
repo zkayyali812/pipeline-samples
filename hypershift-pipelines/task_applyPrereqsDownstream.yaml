@@ -81,8 +81,8 @@ spec:
 
       echo "Applying cluster and machine autoscaling ..."
 
-      oc apply -f samples/downstream-acm/resources/clusterautoscaler.yaml
-      oc apply -f samples/downstream-acm/resources/machineautoscaler.yaml
+      oc apply -f samples/hypershift-pipelines/resources/clusterautoscaler.yaml
+      oc apply -f samples/hypershift-pipelines/resources/machineautoscaler.yaml
     command:
     - /bin/bash
     - -c

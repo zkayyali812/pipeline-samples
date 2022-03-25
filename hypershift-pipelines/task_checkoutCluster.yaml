@@ -60,7 +60,7 @@ spec:
       _PASSWORD=$(oc get secret ${CD_INFO} -n ${NAMESPACE} -o jsonpath='{.data.password}' | base64 -d  )
       _API_URL=$(oc get cd ${NAMESPACE} -n ${NAMESPACE} -o jsonpath='{.status.apiURL}' )
       
-      oc get secret -n ${NAMESPACE} ${KUBECONFIG_SECRET} -o yaml | yq eval '.data.kubeconfig' - | base64 -d > kubeconfig.yaml
+      oc get secret -n ${NAMESPACE} ${KUBECONFIG_SECRET} -o yaml | yq eval '.data.kubeconfig' - | base64 -d > $(inputs.params.clusterClaimName)-kubeconfig.yaml
       
       _IMAGE_PULL_SECRET=$(oc get secret zk-multiclusterhub-operator-pull-secret -o yaml | yq eval '.data.".dockerconfigjson"' -)
 

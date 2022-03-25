@@ -55,7 +55,7 @@ spec:
     workspaces:
     - name: source
       workspace: shared-workspace
-  - name: checkout-cluster
+  - name: checkout-hub-cluster
     params:
     - name: clusterClaimName
       value: $(params.clusterClaimName)
@@ -72,73 +72,115 @@ spec:
     workspaces:
     - name: source
       workspace: shared-workspace
-  - name: login-to-cluster
+  - name: login-to-hub-cluster
     params:
     - name: username
-      value: "$(tasks.checkout-cluster.results.username)"
+      value: "$(tasks.checkout-hub-cluster.results.username)"
     - name: password
-      value: "$(tasks.checkout-cluster.results.password)"
+      value: "$(tasks.checkout-hub-cluster.results.password)"
     - name: api
-      value: "$(tasks.checkout-cluster.results.api)"
+      value: "$(tasks.checkout-hub-cluster.results.api)"
     runAfter:
-    - checkout-cluster
+    - checkout-hub-cluster
     taskRef:
       kind: Task
       name: deploy-acm-hyper-login-to-cluster
     workspaces:
     - name: source
       workspace: shared-workspace
-  - name: ensure-acm-deploy-prereqs
+  - name: checkout-spoke-cluster
+    params:
+    - name: clusterClaimName
+      value: $(params.clusterClaimName)-spoke
+    - name: clusterPoolName
+      value: $(params.clusterPoolName)
+    - name: clusterClaimLifetime
+      value: $(params.clusterClaimLifetime)
+    runAfter:
+    - login-to-hub-cluster
+    taskRef:
+      kind: Task
+      name: deploy-acm-hyper-checkout-cluster
+    workspaces:
+    - name: source
+      workspace: shared-workspace
+  - name: ensure-acm-prereqs
     params:
     - name: namespace
       value: "$(params.namespace)"
     - name: snapshot
       value: "$(params.snapshot)"
     - name: imagePullSecret
-      value: "$(tasks.checkout-cluster.results.imagePullSecret)"
+      value: "$(tasks.checkout-hub-cluster.results.imagePullSecret)"
     runAfter:
-    - login-to-cluster
+    - login-to-hub-cluster
     taskRef:
       kind: Task
       name: deploy-us-acm-hyper-prereqs
     workspaces:
     - name: source
       workspace: shared-workspace
-  - name: apply-acm
+  - name: ensure-acm
     params:
     - name: namespace
       value: $(params.namespace)
     - name: snapshot
       value: "$(params.snapshot)"
     runAfter:
-    - ensure-acm-deploy-prereqs
+    - ensure-acm-prereqs
     taskRef:
       kind: Task
       name: deploy-acm-hyper-apply-sub
     workspaces:
     - name: source
       workspace: shared-workspace
-  - name: apply-mch
+  - name: ensure-mch
     params:
     - name: namespace
       value: $(params.namespace)
     runAfter:
-    - apply-acm
+    - ensure-acm
     taskRef:
       kind: Task
-      name: deploy-us-acm-hyper-apply-mch
+      name: deploy-acm-hyper-apply-mch
     workspaces:
     - name: source
       workspace: shared-workspace
-  - name: apply-hypershiftdeployment
+  - name: import-spoke-cluster
     params:
-    - name: namespace
-      value: $(params.namespace)
+    - name: clusterClaimName
+      value: $(params.clusterClaimName)-spoke
     runAfter:
-    - apply-mch
+    - ensure-mch
+    - checkout-spoke-cluster
     taskRef:
       kind: Task
-      name: deploy-us-acm-hyper-apply-hyper-deployment
+      name: deploy-acm-hyper-import-spoke
+    workspaces:
+    - name: source
+      workspace: shared-workspace
+  - name: ensure-hypershiftdeployment-hub
+    params:
+    - name: targetManagedCluster
+      value: local-cluster
+    runAfter:
+    - ensure-mch
+    - import-spoke-cluster
+    taskRef:
+      kind: Task
+      name: deploy-acm-hyper-apply-hyper-deployment
+    workspaces:
+    - name: source
+      workspace: shared-workspace
+  - name: ensure-hypershiftdeployment-spoke
+    params:
+    - name: targetManagedCluster
+      value: $(params.clusterClaimName)-spoke
+    runAfter:
+    - import-spoke-cluster
+    taskRef:
+      kind: Task
+      name: deploy-acm-hyper-apply-hyper-deployment
     workspaces:
     - name: source
       workspace: shared-workspace

@@ -4,9 +4,9 @@ metadata:
   name: deploy-acm-hyper-apply-hyper-deployment
 spec:
   params:
-  - name: namespace
-    default: open-cluster-management
-    description: The namespace to deploy MCE into
+  - name: targetManagedCluster
+    default: local-cluster
+    description: The managedcluster to target to become a managementcluster
     type: string
   steps:
   - args:
@@ -14,12 +14,40 @@ spec:
       #!/bin/bash
       set -e
 
+      HYPERSHIFT_CREDS=$(oc get secret zk-hypershift-operator-oidc-provider-s3-credentials  -o yaml | yq eval 'del(.metadata)' - | yq eval '.metadata.name = "hypershift-operator-oidc-provider-s3-credentials"' -)
+      ACM_CREDS=$(oc get secret zk-hypershift-acm-creds  -o yaml | yq eval 'del(.metadata)' - | yq eval '.metadata.name = "acm-credentials"' -)
+
       _LOGIN_CMD=$(cat login.sh)
       eval "$_LOGIN_CMD"
 
+      echo "$HYPERSHIFT_CREDS" | oc apply -f - -n $(inputs.params.targetManagedCluster)
+      echo "$ACM_CREDS" | oc apply -f - -n multicluster-engine
+
+      echo "Applying HyperShift ManagedClusterAddon ..."
+      oc apply -f samples/hypershift-pipelines/resources/hypershift-addon.yaml -n $(inputs.params.targetManagedCluster)
+      
+      echo "Waiting for pod to be available"
+      sleep 60
+
       oc project multicluster-engine
       oc create ns clusters || true
-      oc apply -f samples/downstream-acm/resources/hypershiftdeployment.yaml
+      _TEMPLATE="apiVersion: cluster.open-cluster-management.io/v1alpha1
+      kind: HypershiftDeployment
+      metadata:
+        name: $(inputs.params.targetManagedCluster)-hyper-deploy
+      spec:
+        targetManagedCluster: $(inputs.params.targetManagedCluster)
+        targetNamespace: clusters
+        override: MANIFESTWORK
+        infrastructure:
+          cloudProvider:
+            name: acm-credentials
+          configure: true
+          platform:
+            aws:
+              region: us-east-2"
+
+      echo "$_TEMPLATE" | oc apply -f -
 
        _ATTEMPTS=0
       until oc get hostedcluster hypershift-demo -n clusters | grep "hypershift-demo";
