@@ -23,3 +23,15 @@ To deploy the Pipelines run -
 ```
 $ oc apply -f hypershift-pipelines -n <NAMESPACE>
 ```
+
+## Cleanup
+
+To cleanup HyperShift resources and the clusters after deploying via either the upstream or downstream pipelines, run the [cleanup pipeline](pipeline_cleanup.yaml) - `cleanup-acm-and-hypershift-deployment`.
+
+This pipeline takes in 1 paramter - the name of the clusterclaim used in either the upstream or downstream Pipelines and completes the following operations - 
+
+1. Checks out existing hub cluster and logs into it
+2. Deletes all HyperShiftDeployments on the hub
+3. Detaches the imported spoke cluster
+4. Deletes the MultiClusterHub custom resource
+5. Deletes both the spoke and hub clusterclaims
