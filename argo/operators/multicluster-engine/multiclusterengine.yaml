@@ -1,0 +1,11 @@
+apiVersion: multicluster.openshift.io/v1
+kind: MultiClusterEngine
+metadata:
+  name: multiclusterengine-sample
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+spec:
+  overrides:
+    components:
+      - enabled: true
+        name: managed-service-account
