@@ -17,6 +17,24 @@ spec:
     description: The lifetime of the clusterclaim
     default: "8h"
   tasks:
+  - name: fetch-repo-samples
+    params:
+    - name: url
+      value: https://github.com/zkayyali812/pipeline-samples.git
+    - name: revision
+      value: main
+    - name: deleteExisting
+      value: "true"
+    - name: subdirectory
+      value: "samples"
+    - name: gitInitImage
+      value: registry.redhat.io/openshift-pipelines/pipelines-git-init-rhel8@sha256:afc5d3f9efe26c7042635d43b8ffd09d67936e3d0b6b901dc08a33e20313d361
+    taskRef:
+      kind: ClusterTask
+      name: git-clone
+    workspaces:
+    - name: output
+      workspace: shared-workspace
   - name: validate-prereqs
     params:
     - name: clusterPool
@@ -76,6 +94,7 @@ spec:
   - name: ensure-mce
     runAfter:
     - ensure-mce-prereqs
+    - fetch-repo-samples
     taskRef:
       kind: Task
       name: singapore-gateway-ensure-mce
