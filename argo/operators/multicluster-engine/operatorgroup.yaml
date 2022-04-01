@@ -3,8 +3,6 @@ kind: OperatorGroup
 metadata:
   name: default
   namespace: multicluster-engine
-  annotations:
-    argocd.argoproj.io/sync-wave: "2"
 spec:
   targetNamespaces:
   - multicluster-engine
