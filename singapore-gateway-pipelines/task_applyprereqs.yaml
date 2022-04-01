@@ -1,0 +1,59 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: singapore-gateway-apply-mce-prereqs
+spec:
+  params:
+  - name: snapshot
+    default: ""
+    description: The SNAPSHOT Tag used to deploy the catalogsources
+    type: string
+  - name: imagePullSecret
+    default: ""
+    description: The image pull secret used to deploy the catalogsources. Copied from clusterPoolNamespace
+    type: string
+  steps:
+  - args:
+    - |-
+      #!/bin/bash
+      set -e
+
+      _LOGIN_CMD=$(cat login.sh)
+      eval "$_LOGIN_CMD"
+
+      echo "Creating Namespace..."
+      oc create namespace multicluster-engine --dry-run=client -o yaml | oc apply -f -
+      
+      echo "Creating ImagePullSecret..."
+      _TEMPLATE="apiVersion: v1
+      data:
+        .dockerconfigjson: $(inputs.params.imagePullSecret)
+      kind: Secret
+      metadata:
+        name: multiclusterhub-operator-pull-secret
+      type: kubernetes.io/dockerconfigjson"
+      echo "$_TEMPLATE" | oc apply -n multicluster-engine -f  -
+      echo "$_TEMPLATE" | oc apply -n openshift-marketplace -f -
+
+      _TEMPLATE="apiVersion: operators.coreos.com/v1alpha1
+      kind: Subscription
+      metadata:
+        name: openshift-gitops-operator
+        namespace: openshift-operators
+      spec:
+        channel: stable
+        installPlanApproval: Automatic
+        name: openshift-gitops-operator
+        source: redhat-operators
+        sourceNamespace: openshift-marketplace"
+      echo "$_TEMPLATE" | oc apply -f -
+      
+    command:
+    - /bin/bash
+    - -c
+    image: quay.io/zkayyali812/ocm-utils:latest
+    name: apply
+    resources: {}
+    workingDir: /workspace/source
+  workspaces:
+  - name: source

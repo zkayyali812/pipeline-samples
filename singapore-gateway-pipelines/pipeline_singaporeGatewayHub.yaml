@@ -1,0 +1,86 @@
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: deploy-singapore-gateway
+spec:
+  params:
+  - name: clusterPool
+    type: string
+    description: The name of the clusterpool to use to checkout clusters
+    default: "hypershift-cluster-pool"
+  - name: clusterName
+    type: string
+    description: The name of the clusterclaim to create
+    default: "spoke-cluster"
+  - name: clusterClaimLifetime
+    type: string
+    description: The lifetime of the clusterclaim
+    default: "8h"
+  tasks:
+  - name: validate-prereqs
+    params:
+    - name: clusterPool
+      value: "$(params.clusterPool)"
+    - name: clusterClaimLifetime
+      value: $(params.clusterClaimLifetime)
+    taskRef:
+      kind: Task
+      name: singapore-gateway-validate-params
+    workspaces:
+    - name: source
+      workspace: shared-workspace
+  - name: checkout-cluster
+    params:
+    - name: clusterPool
+      value: "$(params.clusterPool)"
+    - name: clusterClaimName
+      value: $(params.clusterName)
+    - name: clusterClaimLifetime
+      value: $(params.clusterClaimLifetime)
+    taskRef:
+      kind: Task
+      name: singapore-gateway-checkout-cluster
+    runAfter:
+      - "validate-prereqs"
+    workspaces:
+    - name: source
+      workspace: shared-workspace
+  - name: login-to-hub-cluster
+    params:
+    - name: username
+      value: "$(tasks.checkout-cluster.results.username)"
+    - name: password
+      value: "$(tasks.checkout-cluster.results.password)"
+    - name: api
+      value: "$(tasks.checkout-cluster.results.api)"
+    runAfter:
+    - checkout-cluster
+    taskRef:
+      kind: Task
+      name: singapore-gateway-login-to-cluster
+    workspaces:
+    - name: source
+      workspace: shared-workspace
+  - name: ensure-mce-prereqs
+    params:
+    - name: imagePullSecret
+      value: "$(tasks.checkout-cluster.results.imagePullSecret)"
+    runAfter:
+    - login-to-hub-cluster
+    taskRef:
+      kind: Task
+      name: singapore-gateway-apply-mce-prereqs
+    workspaces:
+    - name: source
+      workspace: shared-workspace
+  - name: ensure-mce
+    runAfter:
+    - ensure-mce-prereqs
+    taskRef:
+      kind: Task
+      name: singapore-gateway-ensure-mce
+    workspaces:
+    - name: source
+      workspace: shared-workspace
+  workspaces:
+  - name: shared-workspace
