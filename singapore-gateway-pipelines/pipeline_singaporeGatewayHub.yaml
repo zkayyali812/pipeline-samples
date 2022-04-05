@@ -7,11 +7,11 @@ spec:
   - name: clusterName
     type: string
     description: The name of the OSD cluster to create
-    default: "sgs-test"
+    default: "sgs-staging"
   - name: clusterLifetime
     type: string
     description: The lifetime of the cluster
-    default: "24h"
+    default: "168h"
   tasks:
   - name: fetch-repo-samples
     params:
@@ -71,6 +71,8 @@ spec:
     params:
     - name: clusterName
       value: "$(params.clusterName)"
+    - name: clusterLifetime
+      value: "$(params.clusterLifetime)"
     taskRef:
       kind: Task
       name: singapore-gateway-configure-cluster-staging

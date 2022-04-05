@@ -8,6 +8,10 @@ spec:
     default: ""
     description: The name of the OSD cluster to create
     type: string
+  - name: clusterLifetime
+    default: "24h"
+    description: The lifetime of the OSD cluster to use
+    type: string
   steps:
   - args:
     - |-
@@ -15,23 +19,102 @@ spec:
       set -e
 
       _CLUSTER_NAME="$(params.clusterName)"
+      _CLUSTER_LIFETIME="$(params.clusterLifetime)"
+
 
       echo "Authenticating with secret 'singapore-gateway-ocm-credentials'"
       _OCM_TOKEN=$(oc get secret singapore-gateway-ocm-credentials -o yaml | yq eval '.data.ocmToken' - | base64 -d)
+      _GLOBAL_PULL_SECRET=$(oc get secret singapore-gateway-ocm-credentials -o yaml | yq eval '.data.globalPullSecret' - | base64 -d)
+      echo $_GLOBAL_PULL_SECRET > globalpullsecret.yaml
+
       ocm login --token ${_OCM_TOKEN} --url staging
       echo "Logged in to OCM"
+
+      ocm edit cluster --expiration "${_CLUSTER_LIFETIME}" --cluster "${_CLUSTER_NAME}" 
 
       ADMIN_USER=$(oc get secret singapore-gateway-ocm-credentials -o yaml | yq eval '.data.clusterAdminUser' - | base64 -d)
       ADMIN_PASS=$(oc get secret singapore-gateway-ocm-credentials -o yaml | yq eval '.data.clusterAdminPassword' - | base64 -d)
 
-      echo ${ADMIN_PASS} | ocm cluster login ${_CLUSTER_NAME} -u ${ADMIN_USER} 
+      _ATTEMPTS=0
+      echo ""
+      until echo ${ADMIN_PASS} | ocm cluster login ${_CLUSTER_NAME} -u ${ADMIN_USER};
+      do 
+          echo "$_ATTEMPTS/30: Attempting to login to cluster ..."
+          _ATTEMPTS=$((_ATTEMPTS + 1))
+          sleep 60;
+          if [[ $_ATTEMPTS == 30 ]]; then
+              echo "Unable to login to cluster in the allotted time"
+              exit 1
+          fi
+      done
 
-      oc project
+      sleep 30
+
+      _ATTEMPTS=0
+      echo ""
+      until oc project;
+      do 
+          echo "$_ATTEMPTS/30: Validating connection..."
+          _ATTEMPTS=$((_ATTEMPTS + 1))
+          sleep 60;
+          if [[ $_ATTEMPTS == 30 ]]; then
+              echo "Unable to connect to cluster in the allotted time"
+              exit 1
+          fi
+      done 
+
+      oc set data secret/pull-secret -n openshift-config --from-file=.dockerconfigjson=globalpullsecret.yaml
+
+      echo "Applying ICSP ..."
+
+      _TEMPLATE="apiVersion: operator.openshift.io/v1alpha1
+      kind: ImageContentSourcePolicy
+      metadata:
+        annotations:
+        name: rhacm-repo
+      spec:
+        repositoryDigestMirrors:
+        - mirrors:
+          - quay.io:443/acm-d
+          source: registry.redhat.io/rhacm2
+        - mirrors:
+          - quay.io:443/acm-d
+          source: registry.redhat.io/multicluster-engine
+        - mirrors:
+          - registry.redhat.io/openshift4/ose-oauth-proxy
+          source: registry.access.redhat.com/openshift4/ose-oauth-proxy"
+      echo "$_TEMPLATE" | oc apply -f -
+
       echo "Applying OpenShift GitOps ..."
-      oc apply -f samples/singapore-gateway-pipelines/resources/subscriptions.yaml
+      
+      _ATTEMPTS=0
+      until oc apply -f samples/singapore-gateway-pipelines/resources/subscriptions.yaml;
+      do 
+          echo "$_ATTEMPTS/30: Waiting for OpenShift GitOps operator to be running ..."
+          _ATTEMPTS=$((_ATTEMPTS + 1))
+          sleep 60;
+          if [[ $_ATTEMPTS == 5 ]]; then
+              echo "OpenShift Gitops not come up in the allotted time"
+              exit 1
+          fi
+      done
+      echo "OpenShift Gitops is running on hub cluster"
 
-      echo "Applying MultiClusterEngine Argo app"
-      oc apply -f samples/singapore-gateway-pipelines/resources/multiclusterengine
+      _ATTEMPTS=0
+      echo ""
+      until oc apply -f samples/singapore-gateway-pipelines/resources/multiclusterengine;
+      do 
+          echo "$_ATTEMPTS/30: Waiting to apply MultiClusterEngine Argo app ..."
+          _ATTEMPTS=$((_ATTEMPTS + 1))
+          sleep 60;
+          if [[ $_ATTEMPTS == 30 ]]; then
+              echo "Multiclusterengine argo app not come up in the allotted time"
+              exit 1
+          fi
+      done
+      echo "Multiclusterengine is running on hub cluster"
+      exit 0
+      
     command:
     - /bin/bash
     - -c

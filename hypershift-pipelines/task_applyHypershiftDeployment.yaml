@@ -21,7 +21,7 @@ spec:
       eval "$_LOGIN_CMD"
 
       echo "$HYPERSHIFT_CREDS" | oc apply -f - -n $(inputs.params.targetManagedCluster)
-      echo "$ACM_CREDS" | oc apply -f - -n multicluster-engine
+      echo "$ACM_CREDS" | oc apply -f - -n $(inputs.params.targetManagedCluster)
 
       echo "Applying HyperShift ManagedClusterAddon ..."
       oc apply -f samples/hypershift-pipelines/resources/hypershift-addon.yaml -n $(inputs.params.targetManagedCluster)
@@ -34,26 +34,26 @@ spec:
       _TEMPLATE="apiVersion: cluster.open-cluster-management.io/v1alpha1
       kind: HypershiftDeployment
       metadata:
-        name: $(inputs.params.targetManagedCluster)-hyper-deploy
+        name: $(inputs.params.targetManagedCluster)-hd
+        namespace: $(inputs.params.targetManagedCluster)
       spec:
-        targetManagedCluster: $(inputs.params.targetManagedCluster)
-        targetNamespace: clusters
+        hostingCluster: $(inputs.params.targetManagedCluster)
+        hostingNamespace: $(inputs.params.targetManagedCluster)
         override: MANIFESTWORK
         infrastructure:
           cloudProvider:
             name: acm-credentials
-          configure: true
+          configure: True
           platform:
             aws:
               region: us-east-2"
-
       echo "$_TEMPLATE" | oc apply -f -
 
       if [[ "$(inputs.params.targetManagedCluster)" == "local-cluster" ]]; then
         _ATTEMPTS=0
-        until oc get hostedcluster $(inputs.params.targetManagedCluster)-hyper-deploy -n clusters | grep "$(inputs.params.targetManagedCluster)-hyper-deploy";
+        until oc get hostedcluster $(inputs.params.targetManagedCluster)-hd -n $(inputs.params.targetManagedCluster);
         do 
-            echo "Waiting for HostedCluster to be deployed from HyperShiftDeployment"
+            echo "$_ATTEMPTS/10: Waiting for HostedCluster to be deployed from HyperShiftDeployment"
             _ATTEMPTS=$((_ATTEMPTS + 1))
             sleep 15;
             if [[ $_ATTEMPTS == 10 ]]; then
@@ -64,7 +64,7 @@ spec:
         echo "Validating HostedCluster on hub cluster 'local-cluster' ..."
         _ATTEMPTS=0
         echo "Waiting for HostedCluster deployment to complete ..."
-        until oc get hostedcluster -n clusters $(inputs.params.targetManagedCluster)-hyper-deploy -o yaml | yq eval '.status.version.history.[0].state' - | grep "Completed";
+        until oc get hostedcluster -n $(inputs.params.targetManagedCluster) $(inputs.params.targetManagedCluster)-hd -o yaml | yq eval '.status.version.history.[0].state' - | grep "Completed";
         do 
             echo "$_ATTEMPTS/30: Waiting for HostedCluster deployment to be complete... Sleeping 1 min"
             _ATTEMPTS=$((_ATTEMPTS + 1))
@@ -80,9 +80,9 @@ spec:
       echo "Validating HostedCluster created ManagedCluster on hub cluster ..."
         _ATTEMPTS=0
         echo "Waiting for ManagedCluster to be created ..."
-        until oc get managedcluster | grep "$(inputs.params.targetManagedCluster)-hyper-deploy";
+        until oc get managedcluster | grep "$(inputs.params.targetManagedCluster)-hd";
         do 
-            echo "$_ATTEMPTS/30: Waiting for HostedCluster ManagedCluster to be available... Sleeping 1 min"
+            echo "$_ATTEMPTS/10: Waiting for HostedCluster ManagedCluster to be available... Sleeping 1 min"
             _ATTEMPTS=$((_ATTEMPTS + 1))
             sleep 60;
             if [[ $_ATTEMPTS == 10 ]]; then
