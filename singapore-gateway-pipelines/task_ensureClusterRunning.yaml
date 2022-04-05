@@ -1,0 +1,47 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: singapore-gateway-ensure-cluster-is-ready
+spec:
+  params:
+  - name: clusterName
+    default: ""
+    description: The name of the OSD cluster to create
+    type: string
+
+  steps:
+  - args:
+    - |-
+      #!/bin/bash
+      set -e
+
+      _CLUSTER_NAME="$(params.clusterName)"
+
+      echo "Authenticating with secret 'singapore-gateway-ocm-credentials'"
+      _OCM_TOKEN=$(oc get secret singapore-gateway-ocm-credentials -o yaml | yq eval '.data.ocmToken' - | base64 -d)
+      ocm login --token ${_OCM_TOKEN} --url staging
+      echo "Logged in to OCM"
+
+      echo "Waiting up to 1 hour for cluster to be running"
+      _ATTEMPTS=0
+      until ocm describe cluster ${_CLUSTER_NAME} --json | jq -r '.status.state' | grep -q "ready";
+      do 
+          echo "Attempt ${_ATTEMPTS}/60. Cluster currently in state: $(ocm describe cluster ${_CLUSTER_NAME} --json | jq -r '.status.state')"
+          _ATTEMPTS=$((_ATTEMPTS + 1))
+          sleep 60;
+          if [[ $_ATTEMPTS == 60 ]]; then
+              echo "Failed to find the CSV in allotted time"
+              exit 1
+          fi
+      done
+      echo "Cluster is running"
+      exit 0
+    command:
+    - /bin/bash
+    - -c
+    image: quay.io/zkayyali812/ocm-utils:latest
+    name: apply
+    resources: {}
+    workingDir: /workspace/source
+  workspaces:
+  - name: source

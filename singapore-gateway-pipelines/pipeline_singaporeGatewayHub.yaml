@@ -4,18 +4,14 @@ metadata:
   name: deploy-singapore-gateway
 spec:
   params:
-  - name: clusterPool
-    type: string
-    description: The name of the clusterpool to use to checkout clusters
-    default: "hypershift-cluster-pool"
   - name: clusterName
     type: string
-    description: The name of the clusterclaim to create
-    default: "spoke-cluster"
-  - name: clusterClaimLifetime
+    description: The name of the OSD cluster to create
+    default: "sgs-test"
+  - name: clusterLifetime
     type: string
-    description: The lifetime of the clusterclaim
-    default: "8h"
+    description: The lifetime of the cluster
+    default: "24h"
   tasks:
   - name: fetch-repo-samples
     params:
@@ -35,69 +31,52 @@ spec:
     workspaces:
     - name: output
       workspace: shared-workspace
-  - name: validate-prereqs
+  - name: create-osd-cluster
     params:
-    - name: clusterPool
-      value: "$(params.clusterPool)"
-    - name: clusterClaimLifetime
-      value: $(params.clusterClaimLifetime)
+    - name: clusterName
+      value: "$(params.clusterName)"
+    - name: clusterLifetime
+      value: $(params.clusterLifetime)
     taskRef:
       kind: Task
-      name: singapore-gateway-validate-params
+      name: singapore-gateway-deploy-osd-cluster
     workspaces:
     - name: source
       workspace: shared-workspace
-  - name: checkout-cluster
+  - name: ensure-cluster-is-ready
     params:
-    - name: clusterPool
-      value: "$(params.clusterPool)"
-    - name: clusterClaimName
-      value: $(params.clusterName)
-    - name: clusterClaimLifetime
-      value: $(params.clusterClaimLifetime)
+    - name: clusterName
+      value: "$(params.clusterName)"
     taskRef:
       kind: Task
-      name: singapore-gateway-checkout-cluster
+      name: singapore-gateway-ensure-cluster-is-ready
     runAfter:
-      - "validate-prereqs"
+      - create-osd-cluster
     workspaces:
     - name: source
       workspace: shared-workspace
-  - name: login-to-hub-cluster
+  - name: add-idp-to-cluster
     params:
-    - name: username
-      value: "$(tasks.checkout-cluster.results.username)"
-    - name: password
-      value: "$(tasks.checkout-cluster.results.password)"
-    - name: api
-      value: "$(tasks.checkout-cluster.results.api)"
-    runAfter:
-    - checkout-cluster
+    - name: clusterName
+      value: "$(params.clusterName)"
     taskRef:
       kind: Task
-      name: singapore-gateway-login-to-cluster
+      name: singapore-gateway-ensure-cluster-idp
+    runAfter:
+      - ensure-cluster-is-ready
     workspaces:
     - name: source
       workspace: shared-workspace
-  - name: ensure-mce-prereqs
+  - name: configure-cluster-staging
     params:
-    - name: imagePullSecret
-      value: "$(tasks.checkout-cluster.results.imagePullSecret)"
-    runAfter:
-    - login-to-hub-cluster
+    - name: clusterName
+      value: "$(params.clusterName)"
     taskRef:
       kind: Task
-      name: singapore-gateway-apply-mce-prereqs
-    workspaces:
-    - name: source
-      workspace: shared-workspace
-  - name: ensure-mce
+      name: singapore-gateway-configure-cluster-staging
     runAfter:
-    - ensure-mce-prereqs
-    - fetch-repo-samples
-    taskRef:
-      kind: Task
-      name: singapore-gateway-ensure-mce
+      - add-idp-to-cluster
+      - fetch-repo-samples
     workspaces:
     - name: source
       workspace: shared-workspace

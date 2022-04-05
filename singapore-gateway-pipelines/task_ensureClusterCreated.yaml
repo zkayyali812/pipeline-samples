@@ -1,0 +1,69 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: singapore-gateway-deploy-osd-cluster
+spec:
+  params:
+  - name: clusterName
+    default: ""
+    description: The name of the OSD cluster to create
+    type: string
+  - name: clusterLifetime
+    default: ""
+    description: The lifetime of the cluster
+    type: string
+  steps:
+  - args:
+    - |-
+      #!/bin/bash
+      set -e
+
+      _CLUSTER_NAME="$(params.clusterName)"
+
+      echo "Authenticating with secret 'singapore-gateway-ocm-credentials'"
+      _OCM_TOKEN=$(oc get secret singapore-gateway-ocm-credentials -o yaml | yq eval '.data.ocmToken' - | base64 -d)
+      ocm login --token ${_OCM_TOKEN} --url staging
+      echo "Logged in to OCM"
+
+      echo "Checking if cluster '${_CLUSTER_NAME}' exists"
+
+      _CLUSTER_ID=$(ocm describe cluster ${_CLUSTER_NAME} --json | jq '.id')
+      _CLUSTER_ID=${_CLUSTER_ID//[[:blank:]]/}
+
+      if [ "${_CLUSTER_ID}" != "" ]; then
+        echo "Cluster '${_CLUSTER_NAME}' already exists"
+        exit 0
+      fi
+
+      echo "Creating OSD cluster '${_CLUSTER_NAME}'"
+
+      _awsAccountID=$(oc get secret singapore-gateway-ocm-credentials -o yaml | yq eval '.data.awsAccountID' - | base64 -d)
+      _awsAccessKeyID=$(oc get secret singapore-gateway-ocm-credentials -o yaml | yq eval '.data.awsAccessKeyID' - | base64 -d)
+      _awsSecretAccessKey=$(oc get secret singapore-gateway-ocm-credentials -o yaml | yq eval '.data.awsSecretAccessKey' - | base64 -d)
+      _ocpVersion=$(oc get secret singapore-gateway-ocm-credentials -o yaml | yq eval '.data.ocpVersion' - | base64 -d)
+      _provider=$(oc get secret singapore-gateway-ocm-credentials -o yaml | yq eval '.data.provider' - | base64 -d)
+      _region=$(oc get secret singapore-gateway-ocm-credentials -o yaml | yq eval '.data.region' - | base64 -d)
+
+      ocm create cluster ${_CLUSTER_NAME} \
+        --aws-account-id ${_awsAccountID} \
+        --aws-access-key-id ${_awsAccessKeyID} \
+        --aws-secret-access-key ${_awsSecretAccessKey} \
+        --ccs \
+        --version ${_ocpVersion} \
+        --provider ${_provider} \
+        --region ${_region}
+
+      ocm list clusters
+
+      echo "Cluster created"
+      exit 0
+
+    command:
+    - /bin/bash
+    - -c
+    image: quay.io/zkayyali812/ocm-utils:latest
+    name: apply
+    resources: {}
+    workingDir: /workspace/source
+  workspaces:
+  - name: source

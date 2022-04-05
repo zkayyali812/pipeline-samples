@@ -1,0 +1,75 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: singapore-gateway-ensure-cluster-idp
+spec:
+  params:
+  - name: clusterName
+    default: ""
+    description: The name of the OSD cluster to create
+    type: string
+  steps:
+  - args:
+    - |-
+      #!/bin/bash
+      set -e
+
+      _CLUSTER_NAME="$(params.clusterName)"
+
+      echo "Authenticating with secret 'singapore-gateway-ocm-credentials'"
+      _OCM_TOKEN=$(oc get secret singapore-gateway-ocm-credentials -o yaml | yq eval '.data.ocmToken' - | base64 -d)
+      ocm login --token ${_OCM_TOKEN} --url staging
+      echo "Logged in to OCM"
+
+      _CLUSTER_ADMIN_USER=$(oc get secret singapore-gateway-ocm-credentials -o yaml | yq eval '.data.clusterAdminUser' - | base64 -d)
+      _CLUSTER_ADMIN_PASS=$(oc get secret singapore-gateway-ocm-credentials -o yaml | yq eval '.data.clusterAdminPassword' - | base64 -d)
+
+      if [[ -z "${_CLUSTER_ADMIN_USER}" ]]; then
+        echo "Cluster admin user not found in secret 'singapore-gateway-ocm-credentials'"
+        exit 1
+      fi
+
+      _IDP=$(ocm list idp --cluster ${_CLUSTER_NAME})
+
+      if echo "$_IDP" | grep -q "htpasswd"; then
+          echo "htpasswd authentication already configured"
+      else
+        # Create bot authentication
+        while ! ocm create idp --cluster=${_CLUSTER_NAME} --type htpasswd --name htpasswd --username ${_CLUSTER_ADMIN_USER} --password ${_CLUSTER_ADMIN_PASS}
+        do
+            printf "Waiting for cluster to become active...\n"
+            sleep 30
+        done
+
+        ocm create user ${_CLUSTER_ADMIN_USER} --cluster=${_CLUSTER_NAME} --group=cluster-admins
+        ocm create user ${_CLUSTER_ADMIN_USER} --cluster=${_CLUSTER_NAME} --group=dedicated-admins
+      fi
+
+      if echo "$_IDP" | grep -q "GitHub"; then
+        echo "GitHub authentication already configured"
+      else
+        # Create user authentication
+        _IDP_GH_TEAMS=$(oc get secret singapore-gateway-ocm-credentials -o yaml | yq eval '.data.idpGithubTeams' - | base64 -d)
+        _IDP_ClientID=$(oc get secret singapore-gateway-ocm-credentials -o yaml | yq eval '.data.idpClientID' - | base64 -d)
+        _IDP_ClientSecret=$(oc get secret singapore-gateway-ocm-credentials -o yaml | yq eval '.data.idpClientSecret' - | base64 -d)
+
+        ocm create idp --cluster=${_CLUSTER_NAME} \
+          --type github \
+          --name GitHub \
+          --teams ${_IDP_GH_TEAMS} \
+          --client-id ${_IDP_ClientID} \
+          --client-secret ${_IDP_ClientSecret}
+      fi 
+      
+      echo "IDP Created... Be sure to update IDP callback URL in GitHub Oauth settings"
+
+      exit 0
+    command:
+    - /bin/bash
+    - -c
+    image: quay.io/zkayyali812/ocm-utils:latest
+    name: apply
+    resources: {}
+    workingDir: /workspace/source
+  workspaces:
+  - name: source

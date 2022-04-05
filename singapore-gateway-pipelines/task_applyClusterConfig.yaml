@@ -1,0 +1,43 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: singapore-gateway-configure-cluster-staging
+spec:
+  params:
+  - name: clusterName
+    default: ""
+    description: The name of the OSD cluster to create
+    type: string
+  steps:
+  - args:
+    - |-
+      #!/bin/bash
+      set -e
+
+      _CLUSTER_NAME="$(params.clusterName)"
+
+      echo "Authenticating with secret 'singapore-gateway-ocm-credentials'"
+      _OCM_TOKEN=$(oc get secret singapore-gateway-ocm-credentials -o yaml | yq eval '.data.ocmToken' - | base64 -d)
+      ocm login --token ${_OCM_TOKEN} --url staging
+      echo "Logged in to OCM"
+
+      ADMIN_USER=$(oc get secret singapore-gateway-ocm-credentials -o yaml | yq eval '.data.clusterAdminUser' - | base64 -d)
+      ADMIN_PASS=$(oc get secret singapore-gateway-ocm-credentials -o yaml | yq eval '.data.clusterAdminPassword' - | base64 -d)
+
+      echo ${ADMIN_PASS} | ocm cluster login ${_CLUSTER_NAME} -u ${ADMIN_USER} 
+
+      oc project
+      echo "Applying OpenShift GitOps ..."
+      oc apply -f samples/singapore-gateway-pipelines/resources/subscriptions.yaml
+
+      echo "Applying MultiClusterEngine Argo app"
+      oc apply -f samples/singapore-gateway-pipelines/resources/multiclusterengine
+    command:
+    - /bin/bash
+    - -c
+    image: quay.io/zkayyali812/ocm-utils:latest
+    name: apply
+    resources: {}
+    workingDir: /workspace/source
+  workspaces:
+  - name: source
