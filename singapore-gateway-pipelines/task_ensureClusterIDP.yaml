@@ -59,7 +59,14 @@ spec:
           --teams ${_IDP_GH_TEAMS} \
           --client-id ${_IDP_ClientID} \
           --client-secret ${_IDP_ClientSecret}
-      fi 
+      fi
+      
+      _IDP_GITHUB_ADMINS=$(oc get secret singapore-gateway-ocm-credentials -o yaml | yq eval '.data.idpGithubAdmins' - | base64 -d)
+      for IDP_USER in ${_IDP_GITHUB_ADMINS//,/ }
+      do
+        ocm create user ${IDP_USER} --cluster=${_CLUSTER_NAME} --group=cluster-admins || true
+        ocm create user ${IDP_USER} --cluster=${_CLUSTER_NAME} --group=dedicated-admins || true
+      done
       
       echo "IDP Created... Be sure to update IDP callback URL in GitHub Oauth settings"
 
