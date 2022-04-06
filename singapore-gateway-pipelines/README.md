@@ -16,6 +16,8 @@ Singapore Gateway Pipelines provides a Tekton Pipeline which will do the followi
     2. Application files are stored [here](../argo/operators/multicluster-engine/)
     3. MCE configuration is exactly [here](../argo/operators/multicluster-engine/multiclusterengine.yaml). Currently ManagedServiceAccount is enabled
 
+Miro diagrams detailing how the Pipeline functions and how to deploy it can be found [here](https://miro.com/app/board/uXjVO-ggYrA=/)
+
 ## Prereqs
 
 1. OCP Cluster 4.8+
