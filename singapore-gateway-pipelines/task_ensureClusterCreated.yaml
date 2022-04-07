@@ -43,6 +43,9 @@ spec:
       _ocpVersion=$(oc get secret singapore-gateway-ocm-credentials -o yaml | yq eval '.data.ocpVersion' - | base64 -d)
       _provider=$(oc get secret singapore-gateway-ocm-credentials -o yaml | yq eval '.data.provider' - | base64 -d)
       _region=$(oc get secret singapore-gateway-ocm-credentials -o yaml | yq eval '.data.region' - | base64 -d)
+      _min_Replicas=$(oc get secret singapore-gateway-ocm-credentials -o yaml | yq eval '.data.nodesMin' - | base64 -d)
+      _max_Replicas=$(oc get secret singapore-gateway-ocm-credentials -o yaml | yq eval '.data.nodesMax' - | base64 -d)
+      _compute_Nodes=$(oc get secret singapore-gateway-ocm-credentials -o yaml | yq eval '.data.computeNodes' - | base64 -d)
 
       ocm create cluster ${_CLUSTER_NAME} \
         --aws-account-id ${_awsAccountID} \
@@ -51,7 +54,8 @@ spec:
         --ccs \
         --version ${_ocpVersion} \
         --provider ${_provider} \
-        --region ${_region}
+        --region ${_region} \
+        --compute-nodes ${_compute_Nodes}
 
       ocm list clusters
 
