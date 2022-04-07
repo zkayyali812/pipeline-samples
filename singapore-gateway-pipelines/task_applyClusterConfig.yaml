@@ -29,12 +29,13 @@ spec:
 
       ocm login --token ${_OCM_TOKEN} --url staging
       echo "Logged in to OCM"
+      echo ""
 
       echo "Applying cluster lifetime ..."
       ocm edit cluster --expiration "${_CLUSTER_LIFETIME}" --cluster "${_CLUSTER_NAME}" || true
 
       ADMIN_USER=$(oc get secret singapore-gateway-ocm-credentials -o yaml | yq eval '.data.clusterAdminUser' - | base64 -d)
-      ADMIN_PASS=$(oc get secret singapore-gateway-ocm-credentials -o yaml | yq eval '.data.clusterAdminPassword' - | base64 -d)
+      ADMIN_PASS=$(oc get secret singapore-gateway-ocm-credentials-${_CLUSTER_NAME} -o yaml | yq eval '.data.password' - | base64 -d)
 
       _ATTEMPTS=0
       echo ""
@@ -85,7 +86,7 @@ spec:
           - registry.redhat.io/openshift4/ose-oauth-proxy
           source: registry.access.redhat.com/openshift4/ose-oauth-proxy"
       echo "$_TEMPLATE" | oc apply -f -
-
+      echo ""
       echo "Applying OpenShift GitOps ..."
       
       _ATTEMPTS=0
@@ -115,6 +116,7 @@ spec:
       done
       echo "Multiclusterengine is running on hub cluster"
 
+      echo ""
       echo "Applying cluster-registration-operator ..."
       oc apply -f samples/singapore-gateway-pipelines/resources/cluster-registration-operator/namespace.yaml
       oc apply -f samples/singapore-gateway-pipelines/resources/cluster-registration-operator/rbac.yaml

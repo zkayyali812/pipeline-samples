@@ -22,8 +22,7 @@ spec:
       echo "Logged in to OCM"
 
       _CLUSTER_ADMIN_USER=$(oc get secret singapore-gateway-ocm-credentials -o yaml | yq eval '.data.clusterAdminUser' - | base64 -d)
-      _CLUSTER_ADMIN_PASS=$(oc get secret singapore-gateway-ocm-credentials -o yaml | yq eval '.data.clusterAdminPassword' - | base64 -d)
-
+      _CLUSTER_ADMIN_PASS=$(head /dev/urandom | LC_CTYPE=C tr -dc A-Za-z0-9 | head -c 80 ; echo '')
       if [[ -z "${_CLUSTER_ADMIN_USER}" ]]; then
         echo "Cluster admin user not found in secret 'singapore-gateway-ocm-credentials'"
         exit 1
@@ -34,6 +33,11 @@ spec:
       if echo "$_IDP" | grep -q "htpasswd"; then
           echo "htpasswd authentication already configured"
       else
+        oc delete secret singapore-gateway-ocm-credentials-${_CLUSTER_NAME} || true
+        oc create secret generic singapore-gateway-ocm-credentials-${_CLUSTER_NAME} \
+        --from-literal=username=${_CLUSTER_ADMIN_USER} \
+        --from-literal=password=${_CLUSTER_ADMIN_PASS}
+
         # Create bot authentication
         while ! ocm create idp --cluster=${_CLUSTER_NAME} --type htpasswd --name htpasswd --username ${_CLUSTER_ADMIN_USER} --password ${_CLUSTER_ADMIN_PASS}
         do
