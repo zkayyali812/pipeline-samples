@@ -35,6 +35,7 @@ spec:
       eval "$_LOGIN_CMD"
 
       oc project
+      echo ""
 
       echo "Applying OpenShift Gitops ..."
       oc apply -f samples/backup-and-restore/resources/apps/openshift-gitops.yaml
