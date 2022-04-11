@@ -1,0 +1,66 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: backup-and-restore-configure-cluster
+spec:
+  params:
+  - name: clusterClaimName
+    default: demo-claim
+    description: The name of the clusterclaim to use
+    type: string
+  - name: clusterPoolName
+    default: policy-aas-hubs
+    description: The name of the clusterpool to use
+    type: string
+  - name: clusterClaimLifetime
+    default: "8h"
+    description: The length of the lifetime of the clusterclaim
+    type: string
+  results:
+  - name: username
+    description: Username for the claimed cluster.
+  - name: password
+    description: Password for the claimed cluster.  
+  - name: api
+    description: API URL of the claimed cluster.
+  - name: imagePullSecret
+    description: The imagePullSecret on the hub cluster.
+  steps:
+  - args:
+    - |-
+      #!/bin/bash
+      set -e
+
+       _LOGIN_CMD=$(cat login.sh)
+      eval "$_LOGIN_CMD"
+
+      oc project
+
+      echo "Applying OpenShift Gitops ..."
+      oc apply -f samples/backup-and-restore/resources/apps/openshift-gitops.yaml
+    
+      _ATTEMPTS=0
+      echo ""
+      until oc apply -f samples/backup-and-restore/resources/apps/advanced-cluster-management.yaml;
+      do 
+          echo "$_ATTEMPTS/30: Waiting to apply ACM Argo app ..."
+          _ATTEMPTS=$((_ATTEMPTS + 1))
+          sleep 60;
+          if [[ $_ATTEMPTS == 30 ]]; then
+              echo "ACM argo app not come up in the allotted time"
+              exit 1
+          fi
+      done
+      echo "ACM is running on hub cluster"
+      
+      echo "Cluster successfully configured"
+      exit 0
+    command:
+    - /bin/bash
+    - -c
+    image: quay.io/zkayyali812/ocm-utils:latest
+    name: apply
+    resources: {}
+    workingDir: /workspace/source
+  workspaces:
+  - name: source
