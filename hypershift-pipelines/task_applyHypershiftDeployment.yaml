@@ -39,7 +39,6 @@ spec:
       spec:
         hostingCluster: $(inputs.params.targetManagedCluster)
         hostingNamespace: $(inputs.params.targetManagedCluster)
-        override: MANIFESTWORK
         infrastructure:
           cloudProvider:
             name: acm-credentials

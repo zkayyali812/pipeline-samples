@@ -45,8 +45,8 @@ spec:
             sleep 30
         done
 
-        ocm create user ${_CLUSTER_ADMIN_USER} --cluster=${_CLUSTER_NAME} --group=cluster-admins
-        ocm create user ${_CLUSTER_ADMIN_USER} --cluster=${_CLUSTER_NAME} --group=dedicated-admins
+        ocm create user ${_CLUSTER_ADMIN_USER} --cluster=${_CLUSTER_NAME} --group=cluster-admins || true
+        ocm create user ${_CLUSTER_ADMIN_USER} --cluster=${_CLUSTER_NAME} --group=dedicated-admins || true
       fi
 
       if echo "$_IDP" | grep -q "GitHub"; then

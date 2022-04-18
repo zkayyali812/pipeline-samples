@@ -28,7 +28,7 @@ spec:
       if [[ "$existingCSV" != "" ]]; then
           echo "Existing ACM install exists"
           echo $existingCSV
-          oc delete sub acm-operator-subscription
+          oc delete sub acm-operator-subscription || true
           oc delete csv $existingCSV || true
       else
         echo "Existing ACM install does not exist"
